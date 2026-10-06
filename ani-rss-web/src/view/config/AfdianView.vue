@@ -1,5 +1,11 @@
 <template>
-  <SettingsItem label="捐赠状态">
+  <div class="afdian-settings-form full-width">
+    <section id="afdian-sponsor" class="settings-section">
+      <div class="settings-section-heading">
+        <h3>爱发电赞助</h3>
+        <p class="settings-section-desc">支持开发者持续维护项目，解锁高级特性支持</p>
+      </div>
+      <SettingsItem label="捐赠状态">
     <div v-if="props.config['tryOut']">
       <el-tag v-if="props.config['verifyExpirationTime']" type="primary">
         试用中 过期时间: {{ timestampToDate(props.config['expirationTime']) }}
@@ -73,9 +79,28 @@
         title="感谢您的捐赠支持🎁"
     />
   </div>
+    </section>
+  </div>
 </template>
 
 <style scoped>
+.settings-section-heading {
+  margin-bottom: 18px;
+}
+
+.settings-section-heading h3 {
+  margin: 0;
+  color: var(--el-text-color-primary);
+  font-size: 15px;
+  font-weight: 600;
+}
+
+.settings-section-desc {
+  margin: 4px 0 0;
+  color: var(--el-text-color-secondary);
+  font-size: 12px;
+}
+
 .afdian-tag-content {
   align-items: center;
 }

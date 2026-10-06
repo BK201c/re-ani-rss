@@ -1,75 +1,80 @@
 <template>
-  <div class="notification-section">
-    <div class="settings-section-heading">
-      <h3>通知模板</h3>
-    </div>
-    <el-input v-model="props.config['notificationTemplate']" :autosize="{ minRows: 2}"
-              placeholder="${text}" type="textarea"/>
-    <div class="flex notification-template-link">
-      <el-link type="primary" href="https://docs.wushuo.top/config/notification" target="_blank">
-        通知模版示例
-      </el-link>
-    </div>
-  </div>
-  <div class="notification-container">
-    <div class="settings-section-heading">
-      <h3>通知通道</h3>
-    </div>
-    <div>
-      <el-space wrap class="flex flex-wrap gap-4" size="small">
-        <el-card v-for="it in props.config['notificationConfigList']" shadow="never" class="notification-card">
-          <div class="flex notification-card-content">
-            <div class="notification-card-main">
-              <el-tooltip :content="getLabel(it['notificationType'])" placement="top">
-                <p class="notification-card-title">
-                  {{ getLabel(it['notificationType']) }}
-                </p>
-              </el-tooltip>
-              <el-text line-clamp="1" size="small" class="notification-card-text" truncated>
-                {{ it['comment'] ? it['comment'] : '无备注' }}
-              </el-text>
+  <div class="notification-settings-form full-width">
+    <section id="notify-template" class="settings-section">
+      <div class="settings-section-heading">
+        <h3>通知模板</h3>
+        <p class="settings-section-desc">配置下载完成与更新通知的消息文本模板</p>
+      </div>
+      <el-input v-model="props.config['notificationTemplate']" :autosize="{ minRows: 2}"
+                placeholder="${text}" type="textarea"/>
+      <div class="flex notification-template-link">
+        <el-link type="primary" href="https://docs.wushuo.top/config/notification" target="_blank">
+          通知模版示例
+        </el-link>
+      </div>
+    </section>
+
+    <section id="notify-channels" class="settings-section">
+      <div class="settings-section-heading">
+        <h3>通知通道</h3>
+        <p class="settings-section-desc">配置 Bark、Telegram、Webhook 等推送渠道</p>
+      </div>
+      <div>
+        <el-space wrap class="flex flex-wrap gap-4" size="small">
+          <el-card v-for="it in props.config['notificationConfigList']" shadow="never" class="notification-card">
+            <div class="flex notification-card-content">
+              <div class="notification-card-main">
+                <el-tooltip :content="getLabel(it['notificationType'])" placement="top">
+                  <p class="notification-card-title">
+                    {{ getLabel(it['notificationType']) }}
+                  </p>
+                </el-tooltip>
+                <el-text line-clamp="1" size="small" class="notification-card-text" truncated>
+                  {{ it['comment'] ? it['comment'] : '无备注' }}
+                </el-text>
+              </div>
+              <div>
+                <el-dropdown trigger="click">
+                  <el-button circle icon="MoreFilled" size="large" text type="primary"/>
+                  <template #dropdown>
+                    <el-dropdown-menu>
+                      <el-dropdown-item @click="notificationConfigRef?.show(it)">
+                        <el-text type="primary">
+                          <el-icon>
+                            <Edit/>
+                          </el-icon>
+                          编辑
+                        </el-text>
+                      </el-dropdown-item>
+                      <el-dropdown-item @click="del(it)">
+                        <el-text type="danger">
+                          <el-icon>
+                            <Delete/>
+                          </el-icon>
+                          删除
+                        </el-text>
+                      </el-dropdown-item>
+                    </el-dropdown-menu>
+                  </template>
+                </el-dropdown>
+              </div>
             </div>
-            <div>
-              <el-dropdown trigger="click">
-                <el-button circle icon="MoreFilled" size="large" text type="primary"/>
-                <template #dropdown>
-                  <el-dropdown-menu>
-                    <el-dropdown-item @click="notificationConfigRef?.show(it)">
-                      <el-text type="primary">
-                        <el-icon>
-                          <Edit/>
-                        </el-icon>
-                        编辑
-                      </el-text>
-                    </el-dropdown-item>
-                    <el-dropdown-item @click="del(it)">
-                      <el-text type="danger">
-                        <el-icon>
-                          <Delete/>
-                        </el-icon>
-                        删除
-                      </el-text>
-                    </el-dropdown-item>
-                  </el-dropdown-menu>
-                </template>
-              </el-dropdown>
-            </div>
-          </div>
-        </el-card>
-      </el-space>
-    </div>
-    <el-button
-        icon="FolderAdd"
-        bg text
-        type="primary"
-        @click="add"
-        class="notification-add-button"
-        :loading="addLoading"
-    >
-      添加通知
-    </el-button>
+          </el-card>
+        </el-space>
+      </div>
+      <el-button
+          icon="FolderAdd"
+          bg text
+          type="primary"
+          @click="add"
+          class="notification-add-button"
+          :loading="addLoading"
+      >
+        添加通知
+      </el-button>
+    </section>
+    <NotificationConfigView ref="notificationConfigRef" v-model:config="props.config"/>
   </div>
-  <NotificationConfigView ref="notificationConfigRef" v-model:config="props.config"/>
 </template>
 
 <script setup>
@@ -167,6 +172,29 @@ let props = defineProps(['config'])
 
 .notification-add-button {
   margin-top: 12px;
+}
+
+.settings-section + .settings-section {
+  margin-top: 28px;
+  padding-top: 24px;
+  border-top: 1px solid var(--el-border-color-extra-light);
+}
+
+.settings-section-heading {
+  margin-bottom: 18px;
+}
+
+.settings-section-heading h3 {
+  margin: 0;
+  color: var(--el-text-color-primary);
+  font-size: 15px;
+  font-weight: 600;
+}
+
+.settings-section-desc {
+  margin: 4px 0 0;
+  color: var(--el-text-color-secondary);
+  font-size: 12px;
 }
 </style>
 

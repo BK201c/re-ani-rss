@@ -1,5 +1,11 @@
 <template>
-  <div class="flex-center about-container">
+  <div class="about-settings-form full-width">
+    <section id="about-info" class="settings-section">
+      <div class="settings-section-heading">
+        <h3>关于系统</h3>
+        <p class="settings-section-desc">版本信息、在线更新与项目社区</p>
+      </div>
+      <div class="flex-center about-container">
     <div class="flex about-header">
       <img alt="icon.svg" height="80" src="/public/icon.svg" width="80"/>
       <div>
@@ -97,6 +103,8 @@
       </div>
     </div>
   </el-dialog>
+    </section>
+  </div>
 </template>
 
 <script setup>
@@ -262,4 +270,20 @@ let props = defineProps(['config'])
   margin-right: 0;
 }
 
+.settings-section-heading {
+  margin-bottom: 18px;
+}
+
+.settings-section-heading h3 {
+  margin: 0;
+  color: var(--el-text-color-primary);
+  font-size: 15px;
+  font-weight: 600;
+}
+
+.settings-section-desc {
+  margin: 4px 0 0;
+  color: var(--el-text-color-secondary);
+  font-size: 12px;
+}
 </style>

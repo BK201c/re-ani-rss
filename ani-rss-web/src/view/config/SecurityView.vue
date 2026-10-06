@@ -1,69 +1,84 @@
 <template>
-  <SettingsItem label="用户名">
-    <el-input v-model:model-value="props.config.login.username" autocomplete="new-password">
-      <template #prefix>
-        <el-icon class="el-input__icon">
-          <User/>
-        </el-icon>
-      </template>
-    </el-input>
-  </SettingsItem>
-  <SettingsItem label="密码">
-    <el-input v-model:model-value="props.config.login.password" autocomplete="new-password">
-      <template #prefix>
-        <el-icon class="el-input__icon">
-          <Key/>
-        </el-icon>
-      </template>
-    </el-input>
-  </SettingsItem>
-  <SettingsItem label="登录有效">
-    <el-input-number v-model:model-value="props.config.loginEffectiveHours" :min="0">
-      <template #suffix>
-        <span>小时</span>
-      </template>
-    </el-input-number>
-  </SettingsItem>
-  <SettingsItem label="其他">
-    <el-checkbox v-model="props.config['multiLoginForbidden']" label="禁止多端登录"/>
-    <el-checkbox v-model="props.config.innerIP" label="禁止公网访问"/>
-    <el-checkbox v-model="props.config.verifyLoginIp" label="如果IP发生改变登录将失效"/>
-    <el-checkbox v-model="props.config.limitLoginAttempts" label="限制尝试次数"/>
-    <el-checkbox v-model="props.config.allowCors" label="允许跨域"/>
-  </SettingsItem>
-  <SettingsItem label="IP白名单">
-    <div class="full-width">
-      <div>
-        <el-switch v-model:model-value="config['ipWhitelist']"/>
+  <div class="security-settings-form full-width">
+    <section id="security-auth" class="settings-section">
+      <div class="settings-section-heading">
+        <h3>账号与会话安全</h3>
+        <p class="settings-section-desc">修改管理后台凭据、登录有效时长与访问控制</p>
       </div>
-      <div class="full-width">
-        <el-input class="full-width" type="textarea"
-                  :autosize="{ minRows: 2}"
-                  :disabled="!config['ipWhitelist']"
-                  :placeholder="'127.0.0.1\n192.168.1.0/24'" v-model:model-value="config['ipWhitelistStr']"/>
-        <br>
-        <el-text class="mx-1" size="small">
-          对IP白名单跳过身份验证, 换行可填写多个
-        </el-text>
+      <SettingsItem label="用户名">
+        <el-input v-model:model-value="props.config.login.username" autocomplete="new-password">
+          <template #prefix>
+            <el-icon class="el-input__icon">
+              <User/>
+            </el-icon>
+          </template>
+        </el-input>
+      </SettingsItem>
+      <SettingsItem label="密码">
+        <el-input v-model:model-value="props.config.login.password" autocomplete="new-password">
+          <template #prefix>
+            <el-icon class="el-input__icon">
+              <Key/>
+            </el-icon>
+          </template>
+        </el-input>
+      </SettingsItem>
+      <SettingsItem label="登录有效">
+        <el-input-number v-model:model-value="props.config.loginEffectiveHours" :min="0">
+          <template #suffix>
+            <span>小时</span>
+          </template>
+        </el-input-number>
+      </SettingsItem>
+      <SettingsItem label="其他">
+        <el-checkbox v-model="props.config['multiLoginForbidden']" label="禁止多端登录"/>
+        <el-checkbox v-model="props.config.innerIP" label="禁止公网访问"/>
+        <el-checkbox v-model="props.config.verifyLoginIp" label="如果IP发生改变登录将失效"/>
+        <el-checkbox v-model="props.config.limitLoginAttempts" label="限制尝试次数"/>
+        <el-checkbox v-model="props.config.allowCors" label="允许跨域"/>
+      </SettingsItem>
+      <SettingsItem label="Api Key">
+        <div class="flex full-width">
+          <el-input v-model:model-value="props.config.apiKey" readonly/>
+          <div class="login-api-key-buttons flex">
+            <el-button bg text @click="createApiKey">生成</el-button>
+            <el-button bg text @click="copy(props.config.apiKey)">复制</el-button>
+          </div>
+        </div>
+      </SettingsItem>
+    </section>
+
+    <section id="security-network" class="settings-section">
+      <div class="settings-section-heading">
+        <h3>IP 白名单与反代</h3>
+        <p class="settings-section-desc">跳过身份验证的受信网络地址与反向代理受信任 IP</p>
       </div>
-    </div>
-  </SettingsItem>
-  <SettingsItem label="信任的反代IP">
-    <div class="full-width">
-      <el-checkbox label="启用" v-model="config.reverseProxyTrustIpListEnabled"/>
-      <br>
-      <el-input-tag v-model="config.reverseProxyTrustIpList"/>
-    </div>
-  </SettingsItem>
-  <SettingsItem label="Api Key">
-    <div class="flex full-width">
-      <el-input v-model:model-value="props.config.apiKey" readonly/>
-      <div class="login-api-key-buttons flex">
-        <el-button bg text @click="createApiKey">生成</el-button>
-        <el-button bg text @click="copy(props.config.apiKey)">复制</el-button>
-      </div>
-    </div>
-  </SettingsItem>
+      <SettingsItem label="IP白名单">
+        <div class="full-width">
+          <div>
+            <el-switch v-model:model-value="config['ipWhitelist']"/>
+          </div>
+          <div class="full-width">
+            <el-input class="full-width" type="textarea"
+                      :autosize="{ minRows: 2}"
+                      :disabled="!config['ipWhitelist']"
+                      :placeholder="'127.0.0.1\n192.168.1.0/24'" v-model:model-value="config['ipWhitelistStr']"/>
+            <br>
+            <el-text class="mx-1" size="small">
+              对IP白名单跳过身份验证, 换行可填写多个
+            </el-text>
+          </div>
+        </div>
+      </SettingsItem>
+      <SettingsItem label="信任的反代IP">
+        <div class="full-width">
+          <el-checkbox label="启用" v-model="config.reverseProxyTrustIpListEnabled"/>
+          <br>
+          <el-input-tag v-model="config.reverseProxyTrustIpList"/>
+        </div>
+      </SettingsItem>
+    </section>
+  </div>
 </template>
 
 <script setup>
@@ -101,5 +116,28 @@ let props = defineProps(['config'])
 <style scoped>
 .login-api-key-buttons {
   margin-left: 12px;
+}
+
+.settings-section + .settings-section {
+  margin-top: 28px;
+  padding-top: 24px;
+  border-top: 1px solid var(--el-border-color-extra-light);
+}
+
+.settings-section-heading {
+  margin-bottom: 18px;
+}
+
+.settings-section-heading h3 {
+  margin: 0;
+  color: var(--el-text-color-primary);
+  font-size: 15px;
+  font-weight: 600;
+}
+
+.settings-section-desc {
+  margin: 4px 0 0;
+  color: var(--el-text-color-secondary);
+  font-size: 12px;
 }
 </style>

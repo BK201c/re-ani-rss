@@ -1,7 +1,7 @@
 <template>
   <div
       class="download-settings-form full-width">
-    <section class="settings-section">
+    <section id="download-client" class="settings-section">
       <div class="settings-section-heading">
         <h3>下载器连接</h3>
       </div>
@@ -141,7 +141,7 @@
       </SettingsItem>
     </section>
 
-    <section class="settings-section">
+    <section id="download-storage" class="settings-section">
       <div class="settings-section-heading">
         <h3>保存与清理</h3>
       </div>
@@ -198,7 +198,7 @@
       </SettingsItem>
     </section>
 
-    <section class="settings-section">
+    <section id="download-tasks" class="settings-section">
       <div class="settings-section-heading">
         <h3>任务控制</h3>
       </div>
@@ -243,7 +243,7 @@
       </SettingsItem>
     </section>
 
-    <section v-if="props.config.downloadToolType === 'qBittorrent'" class="settings-section settings-section-advanced">
+    <section v-if="props.config.downloadToolType === 'qBittorrent'" id="download-qb-advanced" class="settings-section settings-section-advanced">
       <div class="settings-section-heading">
         <h3>qBittorrent 高级设置</h3>
       </div>

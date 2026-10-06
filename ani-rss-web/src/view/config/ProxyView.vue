@@ -1,5 +1,10 @@
 <template>
-  <div>
+  <div class="proxy-settings-form full-width">
+    <section id="proxy-config" class="settings-section">
+      <div class="settings-section-heading">
+        <h3>代理服务器配置</h3>
+        <p class="settings-section-desc">配置 HTTP / SOCKS5 代理参数以加速网络访问</p>
+      </div>
     <SettingsItem label="IP">
       <el-input v-model:model-value="props.config.proxyHost" :disabled="!props.config.proxy"
                 placeholder="192.168.0.x"/>
@@ -39,6 +44,13 @@
     <SettingsItem label="启用">
       <el-switch v-model:model-value="props.config.proxy"/>
     </SettingsItem>
+    </section>
+
+    <section id="proxy-test" class="settings-section">
+      <div class="settings-section-heading">
+        <h3>代理连通性测试</h3>
+        <p class="settings-section-desc">测试目标源站通过当前代理的访问速度与连通状态</p>
+      </div>
     <SettingsItem label="代理测试">
       <div class="proxy-test-container">
         <div class="proxy-test-controls">
@@ -90,6 +102,7 @@
         </div>
       </div>
     </SettingsItem>
+    </section>
   </div>
 </template>
 
@@ -302,5 +315,28 @@ let props = defineProps(['config'])
   .proxy-test-metrics {
     align-self: flex-start;
   }
+}
+
+.settings-section + .settings-section {
+  margin-top: 28px;
+  padding-top: 24px;
+  border-top: 1px solid var(--el-border-color-extra-light);
+}
+
+.settings-section-heading {
+  margin-bottom: 18px;
+}
+
+.settings-section-heading h3 {
+  margin: 0;
+  color: var(--el-text-color-primary);
+  font-size: 15px;
+  font-weight: 600;
+}
+
+.settings-section-desc {
+  margin: 4px 0 0;
+  color: var(--el-text-color-secondary);
+  font-size: 12px;
 }
 </style>

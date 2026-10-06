@@ -14,7 +14,12 @@
     </div>
   </el-dialog>
   <div class="full-width">
-    <div class="gap-2">
+    <section id="exclude-rules" class="settings-section">
+      <div class="settings-section-heading">
+        <h3>全局排除规则</h3>
+        <p class="settings-section-desc">统一排除不需要的字幕组、语言画质标签或特定关键字</p>
+      </div>
+      <div class="gap-2">
       <el-tag v-if="!props.exclude.length"
               type="info"
               class="exclude-tag">
@@ -68,6 +73,7 @@
         </el-link>
       </el-text>
     </div>
+    </section>
   </div>
 </template>
 
@@ -162,5 +168,28 @@ let props = defineProps({
 
 .exclude-link {
   font-size: var(--el-font-size-extra-small);
+}
+
+.settings-section + .settings-section {
+  margin-top: 28px;
+  padding-top: 24px;
+  border-top: 1px solid var(--el-border-color-extra-light);
+}
+
+.settings-section-heading {
+  margin-bottom: 18px;
+}
+
+.settings-section-heading h3 {
+  margin: 0;
+  color: var(--el-text-color-primary);
+  font-size: 15px;
+  font-weight: 600;
+}
+
+.settings-section-desc {
+  margin: 4px 0 0;
+  color: var(--el-text-color-secondary);
+  font-size: 12px;
 }
 </style>

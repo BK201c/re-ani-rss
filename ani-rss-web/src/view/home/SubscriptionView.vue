@@ -1,6 +1,5 @@
 <template>
   <div class="subscription-page app-page-layout">
-    <AddView ref="addRef"/>
     <CollectionView ref="collectionRef"/>
     <ManageView ref="manageRef"/>
     <PageHeaderView title="订阅" :subtitle="`共 ${subscriptionTotal} 个订阅`"/>
@@ -37,19 +36,6 @@
           </el-select>
         </div>
         <div class="subscription-actions">
-          <el-dropdown trigger="click" split-button type="primary" class="auto-button" @click="goAddSubscription">
-            <span>添加订阅</span>
-            <template #dropdown>
-              <el-dropdown-menu>
-                <el-dropdown-item icon="Plus" @click="goAddSubscription">
-                  添加订阅
-                </el-dropdown-item>
-                <el-dropdown-item icon="FolderAdd" @click="collectionRef?.show">
-                  添加合集
-                </el-dropdown-item>
-              </el-dropdown-menu>
-            </template>
-          </el-dropdown>
           <el-button aria-label="刷新"
                      :loading="refreshLoading"
                      class="auto-button"
@@ -74,24 +60,16 @@
 
 <script setup>
 import {onMounted, ref} from "vue";
-import {useRouter} from "vue-router";
 import {ElMessage, ElMessageBox} from "element-plus";
 import {useLocalStorage} from "@vueuse/core";
 import SubscriptionListView from "@/view/home/SubscriptionListView.vue";
-import AddView from "@/view/home/AddView.vue";
 import CollectionView from "@/view/home/CollectionView.vue";
 import ManageView from "@/view/home/ManageView.vue";
 import PageHeaderView from "@/view/custom/PageHeaderView.vue";
 import {subscriptionViewMode} from "@/js/global.js";
 import * as http from "@/js/http.js";
 
-const router = useRouter()
-const goAddSubscription = () => {
-  router.push('/subscriptions/add')
-}
-
 const listRef = ref()
-const addRef = ref()
 const collectionRef = ref()
 const manageRef = ref()
 const title = ref('')

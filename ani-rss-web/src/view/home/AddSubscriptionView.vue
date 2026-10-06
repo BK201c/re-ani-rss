@@ -17,7 +17,7 @@
         <div class="header-title-group">
           <h1 class="header-title">添加订阅</h1>
           <span class="header-subtitle">
-            <template v-if="step === 1">第 1 步：浏览并选择番剧与字幕组</template>
+            <template v-if="step === 1">{{ currentSourceLabel }} · 共 {{ totalAnimeCount }} 部番剧</template>
             <template v-else>第 2 步：确认与微调订阅配置</template>
           </span>
         </div>
@@ -59,291 +59,156 @@
       </div>
     </header>
 
-    <!-- 主体区域 -->
-    <div class="add-sub-body app-page-content">
-      <!-- ================= STEP 1: 左右分栏工作台 ================= -->
-      <div v-if="step === 1" class="step-one-workspace">
-        <!-- 非手动模式：左右分栏工作台 -->
+    <div class="add-sub-body app-page-content app-page-padding">
+      <!-- ================= STEP 1: 宫格式番剧浏览工作台 ================= -->
+      <div v-if="step === 1" class="step-one-container">
+        <!-- 非手动模式：卡片宫格流 -->
         <template v-if="activeSource !== 'manual'">
-          <!-- 左侧：番剧浏览栏 -->
-          <section class="master-panel">
-            <!-- 筛选与搜索控制条 -->
-            <div class="master-controls">
-              <div class="controls-row">
-                <el-select
-                    v-if="seasons.length"
-                    v-model="selectedSeason"
-                    class="season-select"
-                    placeholder="选择季度"
-                    :disabled="animeListLoading"
-                    @change="handleSeasonChange">
-                  <el-option
-                      v-for="s in seasons"
-                      :key="s.seasonLabel"
-                      :label="s.seasonLabel"
-                      :value="s.seasonLabel"
-                  />
-                </el-select>
-                <el-input
-                    v-model="searchKeyword"
-                    class="search-input"
-                    placeholder="搜索番剧名称..."
-                    clearable
-                    prefix-icon="Search"
-                    @keyup.enter="handleSearch"
-                    @clear="handleClearSearch"
-                >
-                  <template #append>
-                    <el-button icon="Search" :loading="searchLoading" @click="handleSearch"/>
-                  </template>
-                </el-input>
-              </div>
+          <!-- 工具栏：筛选控制 -->
+          <div class="subscription-toolbar">
+            <div class="subscription-filters">
+              <el-input
+                  v-model="searchKeyword"
+                  class="subscription-search"
+                  placeholder="搜索番剧名称..."
+                  clearable
+                  prefix-icon="Search"
+                  @keyup.enter="handleSearch"
+                  @clear="handleClearSearch"
+              >
+                <template #append>
+                  <el-button icon="Search" :loading="searchLoading" @click="handleSearch"/>
+                </template>
+              </el-input>
 
-              <!-- 星期快速导航 -->
-              <div class="week-pills-bar">
-                <button
-                    v-for="w in availableWeeks"
-                    :key="w.key"
-                    type="button"
-                    class="week-pill-btn"
-                    :class="{ 'is-active': activeWeek === w.key }"
-                    @click="activeWeek = w.key">
-                  {{ w.label }}
-                  <span v-if="w.count > 0" class="week-count">({{ w.count }})</span>
-                </button>
-              </div>
-            </div>
-
-            <!-- 番剧海报流列表 -->
-            <div v-loading="animeListLoading" class="anime-list-wrapper">
-              <el-scrollbar class="anime-scrollbar">
-                <div v-if="filteredAnimeList.length" class="anime-cards-list">
-                  <div
-                      v-for="anime in filteredAnimeList"
-                      :key="anime.id"
-                      class="anime-item-card"
-                      :class="{ 'is-selected': selectedAnime?.id === anime.id }"
-                      @click="selectAnime(anime)">
-                    <div class="anime-cover-box">
-                      <img
-                          :src="proxyImage(anime.cover)"
-                          :alt="anime.title"
-                          class="anime-cover-img"
-                          loading="lazy"
-                      />
-                      <span v-if="anime.score > 0" class="anime-score-badge">
-                        {{ Number(anime.score).toFixed(1) }}
-                      </span>
-                    </div>
-                    <div class="anime-info-box">
-                      <div class="anime-item-title" :title="anime.title">
-                        {{ anime.title }}
-                      </div>
-                      <div class="anime-item-tags">
-                        <el-tag v-if="anime.exists" size="small" type="success" effect="light">
-                          已订阅
-                        </el-tag>
-                        <el-tag v-else size="small" type="info" effect="plain">
-                          未订阅
-                        </el-tag>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-                <el-empty
-                    v-else-if="!animeListLoading"
-                    description="暂无匹配番剧"
-                    class="empty-anime"
+              <el-select
+                  v-if="seasons.length"
+                  v-model="selectedSeason"
+                  class="subscription-select season-select"
+                  placeholder="选择季度"
+                  :disabled="animeListLoading || (searchKeyword && searchKeyword.length > 0)"
+                  @change="handleSeasonChange">
+                <el-option
+                    v-for="s in seasons"
+                    :key="s.value"
+                    :label="s.label"
+                    :value="s.value"
                 />
-              </el-scrollbar>
+              </el-select>
+
+              <el-select
+                  v-model="filterSubscribeStatus"
+                  class="subscription-select status-select"
+                  placeholder="订阅状态">
+                <el-option label="全部状态" value="all"/>
+                <el-option label="仅未订阅" value="unsubscribed"/>
+                <el-option label="仅已订阅" value="subscribed"/>
+              </el-select>
             </div>
-          </section>
 
-          <!-- 右侧：番剧详情与字幕组种子面板 -->
-          <section class="detail-panel">
-            <template v-if="selectedAnime">
-              <el-scrollbar class="detail-scrollbar">
-                <div class="detail-content-wrap">
-                  <!-- 顶部番剧 Hero Banner -->
-                  <div class="anime-hero-card">
-                    <img
-                        :src="proxyImage(selectedAnime.cover)"
-                        :alt="selectedAnime.title"
-                        class="hero-cover-img"
-                    />
-                    <div class="hero-main-info">
-                      <div class="hero-title-row">
-                        <h2 class="hero-title">{{ selectedAnime.title }}</h2>
-                      </div>
-                      <div class="hero-meta-row">
-                        <span v-if="selectedAnime.score > 0" class="hero-score">
-                          评分: <strong>{{ Number(selectedAnime.score).toFixed(1) }}</strong>
-                        </span>
-                        <el-tag v-if="selectedAnime.exists" type="success" size="small">已在订阅中</el-tag>
-                      </div>
-                      <div class="hero-actions">
-                        <el-button
-                            v-if="activeSource === 'mikan' && selectedAnime.rawId"
-                            icon="Link"
-                            size="small"
-                            text
-                            bg
-                            @click="openExternal(selectedAnime.rawId)">
-                          在 Mikan 查看
-                        </el-button>
-                      </div>
-                    </div>
-                  </div>
+            <div class="subscription-actions">
+              <el-button
+                  class="auto-button"
+                  icon="Refresh"
+                  :loading="animeListLoading"
+                  @click="retryLoad">
+                刷新
+              </el-button>
+            </div>
+          </div>
 
-                  <!-- 字幕组与种子资源面板 -->
-                  <div v-loading="groupsLoading" class="subgroups-container">
-                    <div class="section-title-bar">
-                      <div class="title-with-count">
-                        <h3>字幕组列表</h3>
-                        <span class="sub-count-tag" v-if="currentGroups.length">
-                          共 {{ currentGroups.length }} 个字幕组
-                        </span>
-                      </div>
-                    </div>
+          <!-- 星期快速导航胶囊栏 -->
+          <div v-if="availableWeeks.length > 1" class="week-pills-bar">
+            <button
+                v-for="w in availableWeeks"
+                :key="w.key"
+                type="button"
+                class="week-pill-btn"
+                :class="{ 'is-active': activeWeek === w.key }"
+                @click="activeWeek = w.key">
+              {{ w.label }}
+              <span v-if="w.count > 0" class="week-count">({{ w.count }})</span>
+            </button>
+          </div>
 
-                    <!-- 字幕组水平标签栏 -->
-                    <div v-if="currentGroups.length" class="subgroups-tabs-wrapper">
-                      <el-scrollbar class="subgroup-scroll">
-                        <div class="subgroups-pills">
-                          <button
-                              v-for="(grp, idx) in currentGroups"
-                              :key="idx"
-                              type="button"
-                              class="subgroup-pill-btn"
-                              :class="{ 'is-active': activeGroupIndex === idx }"
-                              @click="activeGroupIndex = idx">
-                            <span class="subgroup-name">{{ grp.label }}</span>
-                            <span v-if="grp.updateDay" class="subgroup-day">
-                              {{ grp.updateDay }}
-                            </span>
-                          </button>
-                        </div>
-                      </el-scrollbar>
-                    </div>
-
-                    <!-- 当前选中字幕组详情与一键订阅 -->
-                    <div v-if="selectedGroup" class="selected-group-card">
-                      <div class="selected-group-header">
-                        <div class="group-header-left">
-                          <h4 class="current-group-title">{{ selectedGroup.label }}</h4>
-                          <!-- 特征标签 Tags -->
-                          <div v-if="selectedGroup.tags && selectedGroup.tags.length" class="group-tags">
-                            <el-tag
-                                v-for="tag in selectedGroup.tags"
-                                :key="tag"
-                                size="small"
-                                effect="plain"
-                                class="feature-tag">
-                              {{ tag }}
-                            </el-tag>
-                          </div>
-                        </div>
-
-                        <!-- 一键订阅核心主按钮 -->
-                        <div class="group-header-right">
-                          <!-- 如果有多组匹配规则可选 -->
-                          <el-select
-                              v-if="matchedRegexOptions.length > 1"
-                              v-model="selectedRegexOption"
-                              class="match-regex-select"
-                              size="default"
-                              placeholder="选择画质规则">
-                            <el-option
-                                v-for="(opt, oi) in matchedRegexOptions"
-                                :key="oi"
-                                :label="opt.label"
-                                :value="opt.value"
-                            />
-                          </el-select>
-
-                          <el-button
-                              type="primary"
-                              size="default"
-                              icon="Plus"
-                              class="quick-subscribe-btn"
-                              :loading="subscribingLoading"
-                              @click="subscribeCurrentGroup">
-                            订阅此字幕组
-                          </el-button>
-                        </div>
-                      </div>
-
-                      <!-- 种子资源列表 -->
-                      <div class="torrents-stream">
-                        <div class="torrents-header">
-                          <span class="torrents-title">最新发布种子 ({{ selectedGroup.items.length }})</span>
-                        </div>
-                        <div v-if="selectedGroup.items.length" class="torrents-list">
-                          <div
-                              v-for="(t, ti) in selectedGroup.items"
-                              :key="ti"
-                              class="torrent-item-row">
-                            <div class="torrent-main">
-                              <span class="torrent-name" :title="t.title">{{ t.title }}</span>
-                              <div class="torrent-meta">
-                                <span class="meta-item">{{ t.size }}</span>
-                                <span class="meta-dot">·</span>
-                                <span class="meta-item">{{ t.date }}</span>
+          <!-- 垂直周流卡片宫格列表 -->
+          <div v-loading="animeListLoading" class="grid-list-scroll-wrap">
+            <el-scrollbar class="hide-scrollbar">
+              <div class="list-content">
+                <template v-if="groupedAnimeList.length">
+                  <div
+                      v-for="weekGroup in groupedAnimeList"
+                      :key="weekGroup.weekLabel"
+                      class="week-section-block">
+                    <h2 class="list-week-title">
+                      {{ weekGroup.weekLabel }}
+                      <span class="week-count-tag">({{ weekGroup.items.length }})</span>
+                    </h2>
+                    <div class="grid-container card-grid-container">
+                      <div
+                          v-for="anime in weekGroup.items"
+                          :key="anime.id"
+                          class="anime-grid-card-wrap"
+                          @click="openAnimeDrawer(anime)"
+                      >
+                        <el-card shadow="never" class="anime-card-box">
+                          <div class="list-card-content">
+                            <div class="list-card-image-container">
+                              <img
+                                  :src="proxyImage(anime.cover)"
+                                  :alt="anime.title"
+                                  class="list-card-image"
+                                  loading="lazy"
+                              />
+                              <span v-if="anime.score > 0" class="card-score-badge">
+                                {{ Number(anime.score).toFixed(1) }}
+                              </span>
+                            </div>
+                            <div class="list-card-info">
+                              <div class="list-card-info-inner">
+                                <div class="card-title-row">
+                                  <el-tooltip :content="anime.title" placement="top">
+                                    <el-text class="list-card-title" line-clamp="2" truncated>
+                                      {{ anime.title }}
+                                    </el-text>
+                                  </el-tooltip>
+                                </div>
+                                <div class="list-card-tags">
+                                  <el-tag v-if="anime.exists" size="small" type="success">
+                                    已订阅
+                                  </el-tag>
+                                  <el-tag v-else size="small" type="info" effect="plain">
+                                    未订阅
+                                  </el-tag>
+                                </div>
+                              </div>
+                              <div class="list-card-actions">
+                                <el-button size="small" type="primary" text bg icon="Plus">
+                                  选择字幕组
+                                </el-button>
                               </div>
                             </div>
-                            <div class="torrent-actions">
-                              <el-button
-                                  v-if="t.magnet"
-                                  icon="CopyDocument"
-                                  size="small"
-                                  text
-                                  bg
-                                  title="复制磁力链接"
-                                  @click="copyText(t.magnet)"
-                              />
-                              <el-button
-                                  v-if="t.torrent"
-                                  icon="Download"
-                                  size="small"
-                                  text
-                                  bg
-                                  title="下载种子文件"
-                                  @click="openExternal(t.torrent)"
-                              />
-                              <el-button
-                                  size="small"
-                                  text
-                                  type="primary"
-                                  bg
-                                  icon="Check"
-                                  @click="subscribeCurrentGroup">
-                                订阅
-                              </el-button>
-                            </div>
                           </div>
-                        </div>
-                        <el-empty v-else description="该字幕组暂无发布条目" :image-size="60"/>
+                        </el-card>
                       </div>
                     </div>
-
-                    <el-empty
-                        v-else-if="!groupsLoading"
-                        description="未获取到该番剧的字幕组资源"
-                        class="empty-groups"
-                    />
                   </div>
-                </div>
-              </el-scrollbar>
-            </template>
+                </template>
 
-            <!-- 未选择番剧时的占位 -->
-            <div v-else class="empty-detail-placeholder">
-              <el-empty
-                  description="请在左侧选择一部番剧查看字幕组与种子资源"
-                  :image-size="120"
-              />
-            </div>
-          </section>
+                <!-- 空状态展示 -->
+                <div v-else-if="!animeListLoading" class="empty-anime">
+                  <el-empty :description="animeListError || '暂无匹配番剧'">
+                    <template #extra>
+                      <el-button v-if="animeListError" type="primary" size="small" icon="Refresh" @click="retryLoad">重试加载</el-button>
+                      <el-button v-if="!animeListError && (searchKeyword || filterSubscribeStatus !== 'all')" size="small" icon="Back" @click="handleClearFilters">重置筛选</el-button>
+                      <el-button size="small" @click="switchSource('manual')">切换到手动输入 RSS</el-button>
+                    </template>
+                  </el-empty>
+                </div>
+                <div class="list-bottom-spacer"></div>
+              </div>
+            </el-scrollbar>
+          </div>
         </template>
 
         <!-- 手动输入 RSS 模式 -->
@@ -408,6 +273,205 @@
             </div>
           </div>
         </div>
+
+      <!-- ================= 字幕组选择抽屉 ================= -->
+      <el-drawer
+          v-model="drawerVisible"
+          :size="drawerWidth"
+          :with-header="false"
+          class="anime-drawer-modal"
+          destroy-on-close
+      >
+        <div v-if="selectedAnime" class="drawer-content-wrap">
+          <!-- 抽屉头部 Hero Banner -->
+          <div class="drawer-header">
+            <div class="drawer-hero-card">
+              <img
+                  :src="proxyImage(selectedAnime.cover)"
+                  :alt="selectedAnime.title"
+                  class="drawer-hero-cover"
+              />
+              <div class="drawer-hero-info">
+                <div class="drawer-title-row">
+                  <h3 class="drawer-anime-title" :title="selectedAnime.title">{{ selectedAnime.title }}</h3>
+                  <el-button circle text icon="Close" @click="drawerVisible = false" class="drawer-close-btn"/>
+                </div>
+                <div class="drawer-hero-meta">
+                  <span v-if="selectedAnime.score > 0" class="drawer-score">
+                    评分: <strong>{{ Number(selectedAnime.score).toFixed(1) }}</strong>
+                  </span>
+                  <el-tag v-if="selectedAnime.exists" type="success" size="small">已在订阅中</el-tag>
+                </div>
+                <div class="drawer-external-links">
+                  <el-button
+                      v-if="activeSource === 'mikan' && selectedAnime.rawId"
+                      icon="Link"
+                      size="small"
+                      text
+                      bg
+                      @click="openExternal(selectedAnime.rawId)">
+                    在 Mikan 查看
+                  </el-button>
+                  <el-button
+                      v-else-if="activeSource === 'ani-bt' && selectedAnime.rawId"
+                      icon="Link"
+                      size="small"
+                      text
+                      bg
+                      @click="openExternal('https://anibt.net/anime/' + selectedAnime.rawId)">
+                    在 AniBT 查看
+                  </el-button>
+                  <el-button
+                      v-else-if="activeSource === 'anime-garden' && selectedAnime.rawId"
+                      icon="Link"
+                      size="small"
+                      text
+                      bg
+                      @click="openExternal('https://bgm.tv/subject/' + selectedAnime.rawId)">
+                    在 Bangumi 查看
+                  </el-button>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- 字幕组与种子资源面板 -->
+          <div v-loading="groupsLoading" class="drawer-groups-body">
+            <div class="section-title-bar">
+              <div class="title-with-count">
+                <h4>字幕组列表</h4>
+                <span class="sub-count-tag" v-if="currentGroups.length">
+                  共 {{ currentGroups.length }} 个字幕组
+                </span>
+              </div>
+            </div>
+
+            <!-- 字幕组水平标签栏 -->
+            <div v-if="currentGroups.length" class="subgroups-pills-bar">
+              <el-scrollbar class="subgroup-scroll">
+                <div class="subgroups-pills-flow">
+                  <button
+                      v-for="(grp, idx) in currentGroups"
+                      :key="idx"
+                      type="button"
+                      class="subgroup-pill-btn"
+                      :class="{ 'is-active': activeGroupIndex === idx }"
+                      @click="activeGroupIndex = idx">
+                    <span class="subgroup-name">{{ grp.label }}</span>
+                    <span v-if="grp.updateDay" class="subgroup-day">
+                      {{ grp.updateDay }}
+                    </span>
+                  </button>
+                </div>
+              </el-scrollbar>
+            </div>
+
+            <!-- 当前选中字幕组详情与一键订阅 -->
+            <div v-if="selectedGroup" class="selected-group-card">
+              <div class="selected-group-header">
+                <div class="group-header-left">
+                  <h5 class="current-group-title">{{ selectedGroup.label }}</h5>
+                  <div v-if="selectedGroup.tags && selectedGroup.tags.length" class="group-tags">
+                    <el-tag
+                        v-for="tag in selectedGroup.tags"
+                        :key="tag"
+                        size="small"
+                        effect="plain"
+                        class="feature-tag">
+                      {{ tag }}
+                    </el-tag>
+                  </div>
+                </div>
+
+                <!-- 一键订阅核心操作 -->
+                <div class="group-header-right">
+                  <el-select
+                      v-if="matchedRegexOptions.length > 1"
+                      v-model="selectedRegexOption"
+                      class="match-regex-select"
+                      size="default"
+                      placeholder="选择画质规则">
+                    <el-option
+                        v-for="(opt, oi) in matchedRegexOptions"
+                        :key="oi"
+                        :label="opt.label"
+                        :value="opt.value"
+                    />
+                  </el-select>
+
+                  <el-button
+                      type="primary"
+                      size="default"
+                      icon="Plus"
+                      class="quick-subscribe-btn"
+                      :loading="subscribingLoading"
+                      @click="subscribeCurrentGroup">
+                    订阅此字幕组
+                  </el-button>
+                </div>
+              </div>
+
+              <!-- 种子资源列表 -->
+              <div class="torrents-stream">
+                <div class="torrents-header">
+                  <span class="torrents-title">最新发布种子 ({{ selectedGroup.items.length }})</span>
+                </div>
+                <div v-if="selectedGroup.items.length" class="torrents-list">
+                  <div
+                      v-for="(t, ti) in selectedGroup.items"
+                      :key="ti"
+                      class="torrent-item-row">
+                    <div class="torrent-main">
+                      <span class="torrent-name" :title="t.title">{{ t.title }}</span>
+                      <div class="torrent-meta">
+                        <span class="meta-item">{{ t.size }}</span>
+                        <span class="meta-dot">·</span>
+                        <span class="meta-item">{{ t.date }}</span>
+                      </div>
+                    </div>
+                    <div class="torrent-actions">
+                      <el-button
+                          v-if="t.magnet"
+                          icon="CopyDocument"
+                          size="small"
+                          text
+                          bg
+                          title="复制磁力链接"
+                          @click="copyText(t.magnet)"
+                      />
+                      <el-button
+                          v-if="t.torrent"
+                          icon="Download"
+                          size="small"
+                          text
+                          bg
+                          title="下载种子文件"
+                          @click="openExternal(t.torrent)"
+                      />
+                      <el-button
+                          size="small"
+                          text
+                          type="primary"
+                          bg
+                          icon="Check"
+                          @click="subscribeCurrentGroup">
+                        订阅
+                      </el-button>
+                    </div>
+                  </div>
+                </div>
+                <el-empty v-else description="该字幕组暂无发布条目" :image-size="60"/>
+              </div>
+            </div>
+
+            <el-empty
+                v-else-if="!groupsLoading"
+                description="未获取到该番剧的字幕组资源"
+                class="empty-groups"
+            />
+          </div>
+        </div>
+      </el-drawer>
       </div>
 
       <!-- ================= STEP 2: 配置确认与保存 ================= -->
@@ -429,18 +493,21 @@
 </template>
 
 <script setup>
-import {computed, onMounted, ref} from "vue";
+import {computed, onActivated, onMounted, onUnmounted, ref} from "vue";
 import {useRouter} from "vue-router";
 import {ElMessage} from "element-plus";
 import {
   ArrowLeft,
   ArrowRight,
+  Back,
   Check,
+  Close,
   CopyDocument,
   Download,
   FolderAdd,
   Link,
   Plus,
+  Refresh,
   Search
 } from "@element-plus/icons-vue";
 
@@ -463,11 +530,14 @@ const bgmRef = ref()
 
 // 流程状态
 const step = ref(1) // 1: 浏览选番, 2: 确认配置
-const activeSource = ref('mikan') // mikan, anibt, anime-garden, manual
+const activeSource = ref('mikan') // mikan, ani-bt, anime-garden, manual
+const drawerVisible = ref(false)
+const drawerWidth = ref('560px')
+const filterSubscribeStatus = ref('all') // all, unsubscribed, subscribed
 
 const sourceList = [
   {key: 'mikan', label: '蜜柑 Mikan', icon: mikanIcon},
-  {key: 'anibt', label: 'AniBT', icon: aniBTIcon},
+  {key: 'ani-bt', label: 'AniBT', icon: aniBTIcon},
   {key: 'anime-garden', label: '动漫花园', icon: animeGardenIcon},
   {key: 'manual', label: '手动 RSS', icon: null}
 ]
@@ -477,20 +547,48 @@ const animeListLoading = ref(false)
 const searchLoading = ref(false)
 const groupsLoading = ref(false)
 const subscribingLoading = ref(false)
+const animeListError = ref('')
 
+// 当前展示的视图数据
 const seasons = ref([])
 const selectedSeason = ref('')
 const searchKeyword = ref('')
 const activeWeek = ref('全部')
 const rawWeeksData = ref([])
+const animeList = ref([])
 
 // 番剧与字幕组
-const animeList = ref([])
 const selectedAnime = ref(null)
 const groupsCache = ref({}) // id -> groups
 const currentGroups = ref([])
 const activeGroupIndex = ref(0)
 const selectedRegexOption = ref('')
+
+// 每个源独立的状态缓存，避免切换源时状态覆盖或重新拉取全站
+const sourceState = ref({
+  mikan: {
+    seasons: [],
+    selectedSeason: '',
+    selectedSeasonRaw: null,
+    weeks: [],
+    animeList: [],
+    initialized: false
+  },
+  'ani-bt': {
+    seasons: [],
+    selectedSeason: '',
+    weeks: [],
+    animeList: [],
+    initialized: false
+  },
+  'anime-garden': {
+    seasons: [],
+    selectedSeason: '',
+    weeks: [],
+    animeList: [],
+    initialized: false
+  }
+})
 
 // 手动 RSS
 const manualForm = ref({
@@ -502,11 +600,48 @@ const manualForm = ref({
 // Step 2 配置数据
 const configuredAni = ref(JSON.parse(JSON.stringify(aniData)))
 
-// 可选星期分类
+const currentSourceLabel = computed(() => {
+  const src = sourceList.find(s => s.key === activeSource.value)
+  return src ? src.label : ''
+})
+
+// 按星期分组的番剧列表，支持星期筛选、关键词搜索与订阅状态过滤
+const groupedAnimeList = computed(() => {
+  let list = rawWeeksData.value || []
+  if (activeWeek.value !== '全部') {
+    list = list.filter(w => w.weekLabel === activeWeek.value)
+  }
+  if (searchKeyword.value.trim()) {
+    const kw = searchKeyword.value.trim().toLowerCase()
+    list = list.map(w => ({
+      ...w,
+      items: (w.items || []).filter(it => (it.title || '').toLowerCase().includes(kw))
+    }))
+  }
+  if (filterSubscribeStatus.value === 'subscribed') {
+    list = list.map(w => ({
+      ...w,
+      items: (w.items || []).filter(it => it.exists)
+    }))
+  } else if (filterSubscribeStatus.value === 'unsubscribed') {
+    list = list.map(w => ({
+      ...w,
+      items: (w.items || []).filter(it => !it.exists)
+    }))
+  }
+  return list.filter(w => w.items && w.items.length > 0)
+})
+
+// 统计当前展示的番剧总数
+const totalAnimeCount = computed(() => {
+  return groupedAnimeList.value.reduce((acc, w) => acc + (w.items?.length || 0), 0)
+})
+
+// 可选星期分类导航胶囊
 const availableWeeks = computed(() => {
   const result = [{key: '全部', label: '全部', count: animeList.value.length}]
   for (const w of rawWeeksData.value) {
-    const items = w.items || w.animes || w.subjects || []
+    const items = w.items || []
     result.push({
       key: w.weekLabel,
       label: w.weekLabel,
@@ -514,17 +649,6 @@ const availableWeeks = computed(() => {
     })
   }
   return result
-})
-
-// 根据当前星期筛选番剧
-const filteredAnimeList = computed(() => {
-  if (activeWeek.value === '全部') {
-    return animeList.value
-  }
-  const weekGroup = rawWeeksData.value.find(w => w.weekLabel === activeWeek.value)
-  if (!weekGroup) return []
-  const items = weekGroup.items || weekGroup.animes || weekGroup.subjects || []
-  return items.map(item => normalizeAnimeItem(item, activeSource.value))
 })
 
 // 当前选中的字幕组对象
@@ -535,29 +659,61 @@ const selectedGroup = computed(() => {
 
 // 当前字幕组可用的过滤规则选项
 const matchedRegexOptions = computed(() => {
-  if (!selectedGroup.value?.regexList?.length) {
+  if (!selectedGroup.value?.regexList) {
     return []
   }
-  const options = selectedGroup.value.regexList.map(itemGroup => {
-    if (!itemGroup.length) {
+  const list = [...selectedGroup.value.regexList]
+  const hasEmpty = list.some(itemGroup => !itemGroup || !itemGroup.length)
+  if (!hasEmpty) {
+    list.push([])
+  }
+  return list.map(itemGroup => {
+    if (!itemGroup || !itemGroup.length) {
       return {label: '全部资源 (不过滤)', value: JSON.stringify([])}
     }
     const label = itemGroup.map(it => it.label).join(' / ')
     const value = JSON.stringify(itemGroup.map(it => it.regex))
     return {label, value}
   })
-  return options
 })
 
 // 数据规范化辅助
 const normalizeAnimeItem = (item, source) => {
+  let id = ''
+  let rawId = ''
+  let title = ''
+  let cover = item.cover || ''
+  let score = 0
+  let exists = Boolean(item.exists)
+
+  if (source === 'mikan') {
+    id = String(item.url || '')
+    rawId = item.url || ''
+    title = item.title || ''
+    score = item.score || 0
+  } else if (source === 'ani-bt') {
+    id = String(item.bgmId || item.animeId || '')
+    rawId = String(item.bgmId || item.animeId || '')
+    if (typeof item.title === 'object' && item.title !== null) {
+      title = item.title.primary || item.title.chinese || ''
+    } else {
+      title = item.title || ''
+    }
+    score = item.rating || 0
+  } else if (source === 'anime-garden') {
+    id = String(item.id || '')
+    rawId = String(item.id || '')
+    title = item.name || item.title || ''
+    score = item.score || 0
+  }
+
   return {
-    id: String(item.url || item.bgmId || item.id),
-    rawId: item.url || item.bgmId || item.id,
-    title: item.title,
-    cover: item.cover,
-    score: item.score || item.rating || 0,
-    exists: Boolean(item.exists),
+    id,
+    rawId,
+    title,
+    cover,
+    score,
+    exists,
     raw: item,
     source
   }
@@ -571,17 +727,21 @@ const normalizeGroup = (group, source) => {
     title: ti.title,
     size: ti.formatSize || ti.size || '--',
     date: ti.createdAt || ti.publishedAt || '--',
-    magnet: ti.magnet,
-    torrent: ti.torrent
+    magnet: ti.magnet || '',
+    torrent: ti.torrent || ''
   }))
+  let bgmUrl = group.bgmUrl || ''
+  if (!bgmUrl && group.bgmId) {
+    bgmUrl = `https://bgm.tv/subject/${group.bgmId}`
+  }
   return {
     label,
     updateDay: group.updateDay || '',
     tags,
     regexList,
     items,
-    rss: group.rss || group.url,
-    bgmUrl: group.bgmUrl,
+    rss: group.rss || group.url || '',
+    bgmUrl,
     subgroup: group.subgroup || label,
     raw: group,
     source
@@ -590,62 +750,126 @@ const normalizeGroup = (group, source) => {
 
 // 切换数据源
 const switchSource = (src) => {
+  if (activeSource.value === src) return
   activeSource.value = src
   selectedAnime.value = null
   currentGroups.value = []
   searchKeyword.value = ''
   activeWeek.value = '全部'
-  groupsCache.value = {}
-  if (src !== 'manual') {
+  animeListError.value = ''
+
+  if (src === 'manual') return
+
+  const state = sourceState.value[src]
+  if (state && state.initialized && state.animeList.length > 0) {
+    seasons.value = state.seasons
+    selectedSeason.value = state.selectedSeason
+    rawWeeksData.value = state.weeks
+    animeList.value = state.animeList
+    selectAnime(state.animeList[0])
+  } else {
     loadSourceData()
   }
 }
 
 // 加载数据源数据
 const loadSourceData = async (keyword = '', seasonParam = null) => {
+  const currentSrc = activeSource.value
+  if (currentSrc === 'manual') return
+
   animeListLoading.value = true
+  animeListError.value = ''
   selectedAnime.value = null
   currentGroups.value = []
-  rawWeeksData.value = []
-  animeList.value = []
+
+  const state = sourceState.value[currentSrc]
 
   try {
-    if (activeSource.value === 'mikan') {
-      const res = await http.mikan(keyword, seasonParam || {})
-      const {seasons: sList, weeks} = res.data || {}
-      if (sList?.length) {
-        seasons.value = sList
-        const found = sList.find(s => s.select)
-        selectedSeason.value = found ? found.seasonLabel : sList[0].seasonLabel
+    if (currentSrc === 'mikan') {
+      let reqBody = {}
+      if (keyword) {
+        reqBody = {}
+      } else if (seasonParam) {
+        reqBody = seasonParam
+      } else if (state.selectedSeasonRaw) {
+        reqBody = state.selectedSeasonRaw
       }
-      rawWeeksData.value = weeks || []
-      const flattened = (weeks || []).flatMap(w => w.items || [])
-      animeList.value = flattened.map(item => normalizeAnimeItem(item, 'mikan'))
-    } else if (activeSource.value === 'anibt') {
-      const res = await http.aniBT(seasonParam, '', keyword)
-      const {seasons: sList, weeks} = res.data || {}
+
+      const res = await http.mikan(keyword, reqBody)
+      const {seasons: sList, weeks: rawWeeks} = res.data || {}
+
+      // 如果返回了季度列表，更新季度
       if (sList?.length) {
-        seasons.value = sList
-        const found = sList.find(s => s.select)
-        selectedSeason.value = found ? found.seasonLabel : sList[0].seasonLabel
+        state.seasons = sList.map(s => ({
+          label: s.seasonLabel,
+          value: s.seasonLabel,
+          raw: s
+        }))
+        if (!state.selectedSeason) {
+          const found = sList.find(s => s.select) || sList[0]
+          state.selectedSeason = found.seasonLabel
+          state.selectedSeasonRaw = found
+        }
       }
-      rawWeeksData.value = weeks || []
-      const flattened = (weeks || []).flatMap(w => w.animes || [])
-      animeList.value = flattened.map(item => normalizeAnimeItem(item, 'anibt'))
-    } else if (activeSource.value === 'anime-garden') {
+
+      // 如果是按季度查询，记录当前季度
+      if (!keyword && seasonParam) {
+        state.selectedSeason = seasonParam.seasonLabel || state.selectedSeason
+        state.selectedSeasonRaw = seasonParam
+      }
+
+      const weeks = (rawWeeks || []).map(w => ({
+        weekLabel: w.weekLabel,
+        items: (w.items || []).map(item => normalizeAnimeItem(item, 'mikan'))
+      }))
+      state.weeks = weeks
+      state.animeList = weeks.flatMap(w => w.items)
+
+    } else if (currentSrc === 'ani-bt') {
+      const targetSeason = keyword ? '' : (seasonParam || state.selectedSeason || '')
+      const res = await http.aniBT(targetSeason, '', keyword)
+      const {requestedSeason, availableSeasons, byWeekday} = res.data || {}
+
+      if (availableSeasons?.length) {
+        state.seasons = availableSeasons.map(s => ({
+          label: s,
+          value: s,
+          raw: s
+        }))
+      }
+      state.selectedSeason = requestedSeason || state.selectedSeason || availableSeasons?.[0] || ''
+
+      const weeks = (byWeekday || []).map(w => ({
+        weekLabel: w.weekdayLabel || `星期${w.weekday}`,
+        items: (w.animes || []).map(item => normalizeAnimeItem(item, 'ani-bt'))
+      }))
+      state.weeks = weeks
+      state.animeList = weeks.flatMap(w => w.items)
+
+    } else if (currentSrc === 'anime-garden') {
       const res = await http.animeGardenList('')
-      const {weeks} = res.data || {}
-      rawWeeksData.value = weeks || []
-      const flattened = (weeks || []).flatMap(w => w.subjects || [])
-      animeList.value = flattened.map(item => normalizeAnimeItem(item, 'anime-garden'))
+      const weeksRaw = Array.isArray(res.data) ? res.data : (res.data?.weeks || [])
+      const weeks = weeksRaw.map(w => ({
+        weekLabel: w.weekLabel,
+        items: (w.subjects || []).map(item => normalizeAnimeItem(item, 'anime-garden'))
+      }))
+      state.seasons = []
+      state.selectedSeason = ''
+      state.weeks = weeks
+      state.animeList = weeks.flatMap(w => w.items)
     }
 
-    // 默认激活第一个番剧
-    if (animeList.value.length > 0) {
-      selectAnime(animeList.value[0])
-    }
+    state.initialized = true
+
+    // 同步到页面视图
+    seasons.value = state.seasons
+    selectedSeason.value = state.selectedSeason
+    rawWeeksData.value = state.weeks
+    animeList.value = state.animeList
   } catch (e) {
-    ElMessage.error('加载番剧列表失败: ' + (e.message || e))
+    const errorMsg = e.message || String(e) || '加载失败'
+    animeListError.value = `加载番剧列表失败: ${errorMsg}`
+    ElMessage.error(animeListError.value)
   } finally {
     animeListLoading.value = false
   }
@@ -653,9 +877,21 @@ const loadSourceData = async (keyword = '', seasonParam = null) => {
 
 // 季度变更
 const handleSeasonChange = (val) => {
-  const target = seasons.value.find(s => s.seasonLabel === val)
-  if (target) {
-    loadSourceData('', target)
+  const currentSrc = activeSource.value
+  const state = sourceState.value[currentSrc]
+  if (!state) return
+
+  const target = state.seasons.find(s => s.value === val)
+  if (!target) return
+
+  state.selectedSeason = val
+  selectedSeason.value = val
+
+  if (currentSrc === 'mikan') {
+    state.selectedSeasonRaw = target.raw
+    loadSourceData('', target.raw)
+  } else if (currentSrc === 'ani-bt') {
+    loadSourceData('', target.value)
   }
 }
 
@@ -672,8 +908,27 @@ const handleClearSearch = () => {
   loadSourceData('')
 }
 
-// 选择番剧，立即在右侧获取字幕组
+const handleClearFilters = () => {
+  searchKeyword.value = ''
+  filterSubscribeStatus.value = 'all'
+  activeWeek.value = '全部'
+  loadSourceData('')
+}
+
+const retryLoad = () => {
+  loadSourceData(searchKeyword.value)
+}
+
+// 打开字幕组抽屉并加载字幕组数据
+const openAnimeDrawer = (anime) => {
+  selectedAnime.value = anime
+  drawerVisible.value = true
+  selectAnime(anime)
+}
+
+// 选择番剧，立即获取字幕组
 const selectAnime = async (anime) => {
+  if (!anime) return
   selectedAnime.value = anime
   activeGroupIndex.value = 0
   selectedRegexOption.value = ''
@@ -691,7 +946,7 @@ const selectAnime = async (anime) => {
     let res = null
     if (activeSource.value === 'mikan') {
       res = await http.mikanGroup(anime.rawId)
-    } else if (activeSource.value === 'anibt') {
+    } else if (activeSource.value === 'ani-bt') {
       res = await http.aniBTGroup(anime.rawId)
     } else if (activeSource.value === 'anime-garden') {
       res = await http.animeGardenGroup(anime.rawId)
@@ -732,9 +987,12 @@ const subscribeCurrentGroup = async () => {
     }
   }
 
+  let type = activeSource.value
+  if (type === 'manual') type = 'other'
+
   const aniPayload = {
     ...JSON.parse(JSON.stringify(aniData)),
-    type: activeSource.value,
+    type,
     url: grp.rss,
     bgmUrl: grp.bgmUrl || '',
     subgroup: subgroupName,
@@ -747,6 +1005,7 @@ const subscribeCurrentGroup = async () => {
     configuredAni.value = res.data
     configuredAni.value.showDownlaod = false
     configuredAni.value.match = aniPayload.match
+    drawerVisible.value = false
     step.value = 2
   } catch (e) {
     ElMessage.error('解析 RSS 订阅失败: ' + (e.message || e))
@@ -789,6 +1048,8 @@ const handleSaveConfiguredAni = (done) => {
       .then(res => {
         ElMessage.success(res.message || '添加订阅成功')
         window.$reLoadList?.()
+        step.value = 1
+        loadSourceData()
         router.push('/subscriptions')
       })
       .catch(e => {
@@ -828,8 +1089,30 @@ const openExternal = (url) => {
   if (url) window.open(url, '_blank')
 }
 
+const updateDrawerWidth = () => {
+  if (window.innerWidth < 768) {
+    drawerWidth.value = '100%'
+  } else {
+    drawerWidth.value = '560px'
+  }
+}
+
 onMounted(() => {
+  updateDrawerWidth()
+  window.addEventListener('resize', updateDrawerWidth)
   loadSourceData()
+})
+
+onActivated(() => {
+  // 如果之前是在 Step 2，切回来时自动重置为 Step 1 并刷新状态
+  if (step.value === 2) {
+    step.value = 1
+  }
+  loadSourceData()
+})
+
+onUnmounted(() => {
+  window.removeEventListener('resize', updateDrawerWidth)
 })
 </script>
 
@@ -934,67 +1217,76 @@ onMounted(() => {
 .add-sub-body {
   flex: 1;
   min-height: 0;
-  overflow: hidden;
-  padding: 0;
-}
-
-/* ================= Step 1 左右分栏工作台 ================= */
-.step-one-workspace {
-  height: 100%;
+  min-width: 0;
   display: flex;
+  flex-direction: column;
   overflow: hidden;
 }
 
-/* 左侧栏：番剧选择 */
-.master-panel {
-  width: 400px;
-  flex-shrink: 0;
-  height: 100%;
-  border-right: 1px solid var(--el-border-color-light);
-  background: var(--el-bg-color);
-  display: flex;
-  flex-direction: column;
-}
-
-.master-controls {
-  padding: 12px 14px 10px;
-  border-bottom: 1px solid var(--el-border-color-lighter);
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-}
-
-.controls-row {
-  display: flex;
-  gap: 8px;
-}
-
-.season-select {
-  width: 130px;
-  flex-shrink: 0;
-}
-
-.search-input {
+/* ================= Step 1 宫格卡片工作台 ================= */
+.step-one-container {
   flex: 1;
+  height: 100%;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
 }
 
+/* 工具栏（与订阅页面一致） */
+.subscription-toolbar {
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding-bottom: 10px;
+}
+
+.subscription-filters,
+.subscription-actions {
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.subscription-filters {
+  flex: 1;
+  flex-wrap: wrap;
+}
+
+.subscription-actions {
+  flex-shrink: 0;
+}
+
+.subscription-search {
+  width: 240px;
+}
+
+.subscription-select {
+  width: 130px;
+}
+
+/* 星期胶囊导航 */
 .week-pills-bar {
   display: flex;
-  gap: 4px;
+  gap: 6px;
   overflow-x: auto;
-  padding-bottom: 2px;
+  padding-bottom: 8px;
+  flex-shrink: 0;
 }
 
 .week-pill-btn {
-  padding: 4px 8px;
+  padding: 4px 10px;
   border: none;
   background: var(--el-fill-color-light);
-  border-radius: 4px;
+  border-radius: 14px;
   font-size: 12px;
   color: var(--el-text-color-regular);
   cursor: pointer;
   white-space: nowrap;
-  transition: all 0.15s;
+  transition: all 0.15s ease;
 }
 
 .week-pill-btn:hover {
@@ -1008,218 +1300,265 @@ onMounted(() => {
 }
 
 .week-count {
-  font-size: 10px;
+  font-size: 11px;
   opacity: 0.85;
 }
 
-/* 番剧海报卡片流 */
-.anime-list-wrapper {
+/* 垂直周流卡片宫格列表 */
+.grid-list-scroll-wrap {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.hide-scrollbar {
   flex: 1;
   min-height: 0;
 }
 
-.anime-scrollbar {
-  height: 100%;
+.list-content {
+  margin: 0;
 }
 
-.anime-cards-list {
-  padding: 8px;
+.week-section-block {
+  margin-bottom: 20px;
+}
+
+.list-week-title {
+  margin-top: 14px;
+  margin-bottom: 8px;
+  font-size: 16px;
+  font-weight: 600;
+  color: var(--el-text-color-primary);
   display: flex;
-  flex-direction: column;
-  gap: 6px;
+  align-items: center;
+  gap: 8px;
 }
 
-.anime-item-card {
-  display: flex;
-  gap: 10px;
-  padding: 8px;
-  border-radius: 8px;
-  border: 1px solid transparent;
-  background: var(--el-bg-color);
-  cursor: pointer;
-  transition: all 0.15s ease;
+.week-count-tag {
+  font-size: 13px;
+  font-weight: normal;
+  color: var(--el-text-color-secondary);
 }
 
-.anime-item-card:hover {
-  background: var(--el-fill-color-light);
-}
-
-.anime-item-card.is-selected {
-  border-color: var(--el-color-primary);
-  background: var(--el-color-primary-light-9);
-}
-
-.anime-cover-box {
-  position: relative;
-  width: 52px;
-  height: 72px;
-  flex-shrink: 0;
-  border-radius: 6px;
-  overflow: hidden;
-  background: var(--el-fill-color);
-}
-
-.anime-cover-img {
+/* 宫格布局（与 SubscriptionListView 一致） */
+.grid-container {
+  display: grid;
+  grid-gap: 8px;
   width: 100%;
-  height: 100%;
+}
+
+.card-grid-container {
+  grid-template-columns: repeat(auto-fill, minmax(380px, 1fr));
+}
+
+@media (max-width: 800px) {
+  .card-grid-container {
+    grid-template-columns: 1fr;
+  }
+}
+
+.anime-grid-card-wrap {
+  cursor: pointer;
+}
+
+.anime-card-box {
+  border-radius: var(--el-border-radius-base);
+  border: 1px solid var(--el-border-color-light);
+  transition: all 0.25s ease;
+  cursor: pointer;
+}
+
+.anime-card-box:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.08);
+  border-color: var(--el-color-primary-light-5);
+}
+
+/* 卡片内部结构（与 AniCardView 一致） */
+.list-card-content {
+  display: flex;
+  width: 100%;
+  align-items: center;
+  gap: 12px;
+}
+
+.list-card-image-container {
+  position: relative;
+  flex-shrink: 0;
+  height: 125px;
+}
+
+.list-card-image {
+  border: 1px solid var(--el-border-color-light);
+  border-radius: var(--el-border-radius-small);
+  height: 125px;
+  width: 88px;
   object-fit: cover;
+  display: block;
 }
 
-.anime-score-badge {
+.card-score-badge {
   position: absolute;
-  top: 2px;
-  right: 2px;
+  top: 4px;
+  right: 4px;
   background: rgba(0, 0, 0, 0.72);
-  color: #f7ba2a;
-  font-size: 10px;
+  color: #fb7299;
+  font-size: 11px;
   font-weight: 700;
-  padding: 1px 4px;
+  padding: 1px 5px;
   border-radius: 4px;
+  backdrop-filter: blur(2px);
 }
 
-.anime-info-box {
+.list-card-info {
   flex: 1;
   min-width: 0;
   display: flex;
   flex-direction: column;
   justify-content: space-between;
+  height: 125px;
 }
 
-.anime-item-title {
-  font-size: 13px;
+.list-card-info-inner {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.card-title-row {
+  display: flex;
+  align-items: flex-start;
+}
+
+.list-card-title {
+  font-size: 14px;
   font-weight: 600;
   color: var(--el-text-color-primary);
-  line-height: 1.35;
-  display: -webkit-box;
-  -webkit-line-clamp: 2;
-  -webkit-box-orient: vertical;
-  overflow: hidden;
+  line-height: 1.4;
 }
 
-.anime-item-tags {
+.list-card-tags {
   display: flex;
+  flex-wrap: wrap;
   gap: 6px;
-  align-items: center;
+  margin-top: 4px;
 }
 
-/* 右侧栏：详情与种子 */
-.detail-panel {
-  flex: 1;
-  min-width: 0;
-  height: 100%;
+.list-card-actions {
+  display: flex;
+  justify-content: flex-end;
+  margin-top: auto;
+}
+
+.empty-anime {
+  padding: 40px 0;
+}
+
+.list-bottom-spacer {
+  height: 16px;
+}
+
+/* ================= 抽屉面板样式 ================= */
+.anime-drawer-modal :deep(.el-drawer__body) {
+  padding: 0;
+  overflow-y: auto;
   background: var(--el-bg-color-page);
+}
+
+.drawer-content-wrap {
   display: flex;
   flex-direction: column;
+  min-height: 100%;
 }
 
-.detail-scrollbar {
-  height: 100%;
-}
-
-.detail-content-wrap {
-  padding: 16px 20px 40px;
-  display: flex;
-  flex-direction: column;
-  gap: 16px;
-}
-
-/* 番剧 Hero 卡片 */
-.anime-hero-card {
-  display: flex;
-  gap: 16px;
-  padding: 16px;
-  border-radius: 12px;
+.drawer-header {
+  padding: 20px;
   background: var(--el-bg-color);
-  border: 1px solid var(--el-border-color-lighter);
+  border-bottom: 1px solid var(--el-border-color-lighter);
 }
 
-.hero-cover-img {
-  width: 76px;
-  height: 104px;
-  flex-shrink: 0;
+.drawer-hero-card {
+  display: flex;
+  gap: 16px;
+  align-items: flex-start;
+}
+
+.drawer-hero-cover {
+  width: 80px;
+  height: 112px;
   border-radius: 8px;
   object-fit: cover;
+  flex-shrink: 0;
   box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);
 }
 
-.hero-main-info {
+.drawer-hero-info {
   flex: 1;
   min-width: 0;
   display: flex;
   flex-direction: column;
-  justify-content: space-between;
+  gap: 6px;
 }
 
-.hero-title {
+.drawer-title-row {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.drawer-anime-title {
   margin: 0;
-  font-size: 18px;
+  font-size: 16px;
   font-weight: 700;
   color: var(--el-text-color-primary);
-  line-height: 1.3;
+  line-height: 1.35;
 }
 
-.hero-meta-row {
+.drawer-close-btn {
+  flex-shrink: 0;
+}
+
+.drawer-hero-meta {
   display: flex;
   align-items: center;
-  gap: 12px;
-  margin: 6px 0;
+  gap: 10px;
 }
 
-.hero-score {
+.drawer-score {
   font-size: 13px;
   color: var(--el-text-color-secondary);
 }
 
-.hero-score strong {
-  color: #f7ba2a;
-  font-size: 15px;
+.drawer-score strong {
+  color: #fb7299;
+  font-size: 14px;
 }
 
-.hero-actions {
+.drawer-external-links {
   display: flex;
   gap: 8px;
+  margin-top: 4px;
 }
 
-/* 字幕组与资源区域 */
-.subgroups-container {
+.drawer-groups-body {
+  padding: 16px 20px 40px;
   display: flex;
   flex-direction: column;
-  gap: 12px;
+  gap: 14px;
 }
 
-.section-title-bar {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-}
-
-.title-with-count {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-}
-
-.title-with-count h3 {
-  margin: 0;
-  font-size: 15px;
-  font-weight: 650;
-  color: var(--el-text-color-primary);
-}
-
-.sub-count-tag {
-  font-size: 12px;
-  color: var(--el-text-color-secondary);
-}
-
-/* 字幕组标签胶囊 */
-.subgroups-tabs-wrapper {
+.subgroups-pills-bar {
   background: var(--el-bg-color);
   padding: 6px 8px;
   border-radius: 10px;
   border: 1px solid var(--el-border-color-lighter);
 }
 
-.subgroups-pills {
+.subgroups-pills-flow {
   display: flex;
   gap: 6px;
   align-items: center;
@@ -1259,11 +1598,6 @@ onMounted(() => {
   margin-top: 2px;
 }
 
-.subgroup-pill-btn.is-active .subgroup-day {
-  color: var(--el-color-primary-light-3);
-}
-
-/* 选中字幕组卡片 */
 .selected-group-card {
   border-radius: 12px;
   background: var(--el-bg-color);
@@ -1272,75 +1606,62 @@ onMounted(() => {
 }
 
 .selected-group-header {
-  padding: 14px 18px;
+  padding: 12px 16px;
   border-bottom: 1px solid var(--el-border-color-lighter);
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 16px;
+  gap: 12px;
   background: var(--el-fill-color-lighter);
-}
-
-.group-header-left {
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
+  flex-wrap: wrap;
 }
 
 .current-group-title {
   margin: 0;
-  font-size: 16px;
+  font-size: 15px;
   font-weight: 700;
-  color: var(--el-text-color-primary);
 }
 
 .group-tags {
   display: flex;
   flex-wrap: wrap;
   gap: 4px;
+  margin-top: 4px;
 }
 
 .group-header-right {
   display: flex;
   align-items: center;
-  gap: 10px;
+  gap: 8px;
 }
 
 .match-regex-select {
-  width: 170px;
+  width: 160px;
 }
 
-.quick-subscribe-btn {
-  font-weight: 600;
-}
-
-/* 种子列表平铺 */
 .torrents-stream {
-  padding: 14px 18px;
-}
-
-.torrents-header {
-  margin-bottom: 10px;
+  padding: 12px 16px;
 }
 
 .torrents-title {
-  font-size: 13px;
+  font-size: 12px;
   font-weight: 600;
   color: var(--el-text-color-secondary);
+  margin-bottom: 8px;
 }
 
 .torrents-list {
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  gap: 6px;
 }
 
 .torrent-item-row {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 16px;
-  padding: 10px 12px;
+  gap: 12px;
+  padding: 8px 10px;
   border-radius: 8px;
   background: var(--el-fill-color-blank);
   border: 1px solid var(--el-border-color-extra-light);
@@ -1349,7 +1670,6 @@ onMounted(() => {
 
 .torrent-item-row:hover {
   background: var(--el-fill-color-light);
-  border-color: var(--el-border-color-light);
 }
 
 .torrent-main {
@@ -1357,20 +1677,16 @@ onMounted(() => {
   min-width: 0;
   display: flex;
   flex-direction: column;
-  gap: 4px;
+  gap: 2px;
 }
 
 .torrent-name {
-  font-size: 13px;
-  color: var(--el-text-color-primary);
+  font-size: 12px;
   line-height: 1.4;
   word-break: break-all;
 }
 
 .torrent-meta {
-  display: flex;
-  align-items: center;
-  gap: 6px;
   font-size: 11px;
   color: var(--el-text-color-secondary);
 }
@@ -1378,18 +1694,11 @@ onMounted(() => {
 .torrent-actions {
   display: flex;
   align-items: center;
-  gap: 6px;
+  gap: 4px;
   flex-shrink: 0;
 }
 
-.empty-detail-placeholder {
-  flex: 1;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-
-/* 手动 RSS 模式 */
+/* ================= 手动 RSS 模式 ================= */
 .manual-rss-workspace {
   width: 100%;
   height: 100%;
@@ -1479,24 +1788,5 @@ onMounted(() => {
   padding: 24px;
   border-radius: 12px;
   border: 1px solid var(--el-border-color-lighter);
-}
-
-/* 响应式适配 */
-@media (max-width: 900px) {
-  .step-one-workspace {
-    flex-direction: column;
-  }
-
-  .master-panel {
-    width: 100%;
-    height: 380px;
-    border-right: none;
-    border-bottom: 1px solid var(--el-border-color-light);
-  }
-
-  .detail-panel {
-    height: auto;
-    flex: 1;
-  }
 }
 </style>

@@ -1,6 +1,6 @@
 <template>
   <div class="basic-config-form full-width">
-    <section class="settings-section">
+    <section id="basic-page" class="settings-section">
       <div class="settings-section-heading">
         <h3>页面显示</h3>
         <p class="settings-section-desc">界面主题、色彩、布局与视图偏好</p>
@@ -8,7 +8,7 @@
       <PageView :config="props.config"/>
     </section>
 
-    <section class="settings-section">
+    <section id="basic-defaults" class="settings-section">
       <div class="settings-section-heading">
         <h3>添加订阅默认值</h3>
         <p class="settings-section-desc">新增番剧订阅时的默认下载与行为配置</p>
@@ -16,7 +16,7 @@
       <AddView :config="props.config"/>
     </section>
 
-    <section class="settings-section">
+    <section id="basic-bangumi" class="settings-section">
       <div class="settings-section-heading">
         <h3>Bangumi 账号</h3>
         <p class="settings-section-desc">绑定 Bangumi 账号以同步收藏与评分信息</p>
@@ -24,7 +24,7 @@
       <BangumiView :config="props.config"/>
     </section>
 
-    <section class="settings-section">
+    <section id="basic-backup" class="settings-section">
       <div class="settings-section-heading">
         <h3>备份与恢复</h3>
         <p class="settings-section-desc">导出或导入系统配置与订阅数据备份</p>
@@ -32,7 +32,7 @@
       <BackupView :config="props.config"/>
     </section>
 
-    <section class="settings-section">
+    <section id="basic-other" class="settings-section">
       <div class="settings-section-heading">
         <h3>其他杂项</h3>
         <p class="settings-section-desc">系统其他杂项与高级开关</p>

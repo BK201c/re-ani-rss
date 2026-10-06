@@ -1,6 +1,6 @@
 <template>
   <div class="rss-config-form full-width">
-    <section class="settings-section">
+    <section id="rss-rename" class="settings-section">
       <div class="settings-section-heading">
         <h3>重命名设置</h3>
         <p class="settings-section-desc">番剧文件自动整理与重命名格式规范</p>
@@ -8,7 +8,7 @@
       <RenameView :config="props.config"/>
     </section>
 
-    <section class="settings-section">
+    <section id="rss-scrape" class="settings-section">
       <div class="settings-section-heading">
         <h3>刮削设置</h3>
         <p class="settings-section-desc">TMDB 与 Bangumi 元数据获取与海报刮削</p>
@@ -16,7 +16,7 @@
       <ScrapeView :config="props.config"/>
     </section>
 
-    <section class="settings-section">
+    <section id="rss-fetch" class="settings-section">
       <div class="settings-section-heading">
         <h3>RSS 抓取设置</h3>
         <p class="settings-section-desc">订阅更新频率、抓取重试与过滤规则行为</p>
@@ -24,7 +24,7 @@
       <RssView :config="props.config"/>
     </section>
 
-    <section class="settings-section">
+    <section id="rss-trackers" class="settings-section">
       <div class="settings-section-heading">
         <h3>Trackers 服务器</h3>
         <p class="settings-section-desc">自动注入公共 Tracker 地址以加速 BT 下载</p>

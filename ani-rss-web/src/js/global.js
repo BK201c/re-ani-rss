@@ -95,17 +95,11 @@ const initTheme = () => {
  * 布局初始化
  */
 const initLayout = () => {
-    let app = document.querySelector('#app');
-
-    // 设置最大布局宽度
+    // 设置最大布局宽度 CSS 变量
     maxContentWidth.value = Math.max(maxContentWidth.value, 1200)
-
-    app
-        .style.maxWidth = `${maxContentWidth.value}px`
 
     const el = document.documentElement
     el.style.setProperty('--max-content-width', `${maxContentWidth.value}px`)
-
 }
 
 /**
