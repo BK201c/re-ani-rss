@@ -26,7 +26,7 @@
           <el-icon>
             <Connection/>
           </el-icon>
-          <span>RSS源</span>
+          <span>RSS</span>
         </el-menu-item>
         <el-menu-item index="/downloads">
           <el-icon>
