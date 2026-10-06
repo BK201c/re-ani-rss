@@ -739,43 +739,60 @@ const findMatchedSubscriptions = (anime) => {
 
   const animeTitle = (anime.title || '').trim().toLowerCase()
   const cleanAnimeTitle = animeTitle
-      .replace(/\s*\(\d{4}\)$/, '')
-      .replace(/\s*第[一二三四五六七八九十\d]+[季部分]$/, '')
+      .replace(/\s*[\(（]\d{4}[\)）]$/, '')
       .trim()
 
+  // 1. 提取当前卡片的 Mikan Bangumi ID
   let mikanId = ''
   if (anime.source === 'mikan' && anime.rawId) {
     const match = String(anime.rawId).match(/\/(\d+)(?:\/|\?|$)/)
     if (match) mikanId = match[1]
   }
-  const animeBgmId = anime.raw?.bgmId || (anime.source !== 'mikan' ? anime.rawId : '')
+
+  // 2. 提取当前卡片的 Bangumi subject ID
+  let animeBgmId = ''
+  if (anime.raw?.bgmId) {
+    animeBgmId = String(anime.raw.bgmId).trim()
+  } else if (anime.source !== 'mikan' && anime.rawId) {
+    animeBgmId = String(anime.rawId).trim()
+  }
 
   return subscribedList.value.filter(ani => {
-    // 1. Mikan bangumiId 匹配
-    if (mikanId && ani.url) {
-      if (ani.url.includes(`bangumiId=${mikanId}`) || ani.url.includes(`Bangumi/${mikanId}`)) {
-        return true
-      }
+    // 提取已订阅条目的 Mikan Bangumi ID
+    let aniMikanId = ''
+    if (ani.url) {
+      const match = String(ani.url).match(/[?&]bangumiId=(\d+)/i) || String(ani.url).match(/Bangumi\/(\d+)/i)
+      if (match) aniMikanId = match[1]
     }
 
-    // 2. BgmId 匹配
-    if (animeBgmId && ani.bgmUrl) {
-      const aniBgmIdMatch = String(ani.bgmUrl).match(/subject\/(\d+)/)
-      if (aniBgmIdMatch && aniBgmIdMatch[1] === String(animeBgmId)) {
-        return true
-      }
+    // 提取已订阅条目的 Bangumi subject ID
+    let aniBgmId = ''
+    if (ani.bgmUrl) {
+      const match = String(ani.bgmUrl).match(/subject\/(\d+)/i)
+      if (match) aniBgmId = match[1]
     }
 
-    // 3. 标题匹配
-    if (ani.title) {
-      const aniTitle = ani.title.trim().toLowerCase()
-      const cleanAniTitle = aniTitle
-          .replace(/\s*\(\d{4}\)$/, '')
-          .replace(/\s*第[一二三四五六七八九十\d]+[季部分]$/, '')
-          .trim()
-      if (cleanAniTitle && cleanAnimeTitle) {
-        if (cleanAniTitle === cleanAnimeTitle || aniTitle === animeTitle || cleanAniTitle.includes(cleanAnimeTitle) || cleanAnimeTitle.includes(cleanAniTitle)) {
-          return true
+    // 判定优先级：
+    // A. 如果同为 Mikan 源且均有 mikanId：
+    if (mikanId && aniMikanId) {
+      return mikanId === aniMikanId
+    }
+
+    // B. 如果双方均有权威 bgmId：
+    // 若相等则为同一动漫；若不相等则确凿不是同一动漫，禁止继续模糊匹配
+    if (animeBgmId && aniBgmId) {
+      return animeBgmId === aniBgmId
+    }
+
+    // C. 仅当至少一方缺失 bgmId 时，降级到标题精确全等匹配（绝对禁止子串模糊匹配）
+    if (!animeBgmId || !aniBgmId) {
+      if (ani.title) {
+        const aniTitle = ani.title.trim().toLowerCase()
+        const cleanAniTitle = aniTitle
+            .replace(/\s*[\(（]\d{4}[\)）]$/, '')
+            .trim()
+        if (cleanAniTitle && cleanAnimeTitle) {
+          return cleanAniTitle === cleanAnimeTitle || aniTitle === animeTitle
         }
       }
     }
@@ -796,13 +813,13 @@ const updateSubscribedInfoForAnimeList = () => {
   for (const item of animeList.value) {
     const subs = getAnimeSubscribedSubgroups(item)
     item.subscribedSubgroups = subs
-    if (subs.length > 0) item.exists = true
+    item.exists = Boolean(item.raw?.exists) || subs.length > 0
   }
   for (const week of rawWeeksData.value) {
     for (const item of (week.items || [])) {
       const subs = getAnimeSubscribedSubgroups(item)
       item.subscribedSubgroups = subs
-      if (subs.length > 0) item.exists = true
+      item.exists = Boolean(item.raw?.exists) || subs.length > 0
     }
   }
 }
@@ -886,9 +903,7 @@ const normalizeAnimeItem = (item, source) => {
   }
 
   const subs = getAnimeSubscribedSubgroups({ rawId, title, source, raw: item })
-  if (subs.length > 0) {
-    exists = true
-  }
+  exists = Boolean(item.exists) || subs.length > 0
 
   return {
     id,
