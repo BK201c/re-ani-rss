@@ -24,7 +24,7 @@
     </properties>
 
     <modules>
-        <module>ani-rss-ui</module>
+        <module>ani-rss-web</module>
         <module>ani-rss-application</module>
     </modules>
 
@@ -39,7 +39,7 @@
         <dependencies>
             <dependency>
                 <groupId>ani.rss</groupId>
-                <artifactId>ani-rss-ui</artifactId>
+                <artifactId>ani-rss-web</artifactId>
                 <version>${project.parent.version}</version>
             </dependency>
             <dependency>

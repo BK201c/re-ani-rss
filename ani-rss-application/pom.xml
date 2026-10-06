@@ -74,7 +74,7 @@
         </dependency>
         <dependency>
             <groupId>ani.rss</groupId>
-            <artifactId>ani-rss-ui</artifactId>
+            <artifactId>ani-rss-web</artifactId>
         </dependency>
         <dependency>
             <groupId>org.projectlombok</groupId>
@@ -258,7 +258,7 @@
                                     <supportUrl>https://whichjdk.com/</supportUrl>
                                     <stayAlive>false</stayAlive>
                                     <restartOnCrash>false</restartOnCrash>
-                                    <icon>${project.parent.basedir}/ani-rss-ui/public/favicon.ico</icon>
+                                    <icon>${project.parent.basedir}/ani-rss-web/public/favicon.ico</icon>
                                     <singleInstance>
                                         <mutexName>ani-rss (${project.version})</mutexName>
                                         <windowTitle>ani-rss (${project.version})</windowTitle>
