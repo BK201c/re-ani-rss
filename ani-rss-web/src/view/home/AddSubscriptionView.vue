@@ -4,118 +4,102 @@
     <CollectionView ref="collectionRef"/>
     <BgmView ref="bgmRef" @callback="bgmCallback"/>
 
-    <!-- 顶栏导航 -->
-    <header class="add-sub-header">
-      <div class="header-left">
+    <!-- 统一页面头部 -->
+    <PageHeaderView
+        title="RSS源"
+        :subtitle="step === 1 ? `${currentSourceLabel} · 共 ${totalAnimeCount} 部番剧` : '第 2 步：确认与微调订阅配置'"
+    >
+      <template #actions>
         <el-button
-            class="back-btn"
-            icon="ArrowLeft"
-            circle
-            @click="handleBack"
-            :title="step === 2 ? '返回选择番剧' : '返回订阅列表'"
-        />
-        <div class="header-title-group">
-          <h1 class="header-title">添加订阅</h1>
-          <span class="header-subtitle">
-            <template v-if="step === 1">{{ currentSourceLabel }} · 共 {{ totalAnimeCount }} 部番剧</template>
-            <template v-else>第 2 步：确认与微调订阅配置</template>
-          </span>
-        </div>
-      </div>
-
-      <!-- Step 1 数据源切换 -->
-      <div v-if="step === 1" class="header-center">
-        <div class="source-segmented">
-          <button
-              v-for="src in sourceList"
-              :key="src.key"
-              type="button"
-              class="source-tab-btn"
-              :class="{ 'is-active': activeSource === src.key }"
-              @click="switchSource(src.key)">
-            <img v-if="src.icon" :src="src.icon" :alt="src.label" class="source-tab-icon"/>
-            <el-icon v-else class="source-tab-icon-el">
-              <Link/>
-            </el-icon>
-            <span>{{ src.label }}</span>
-          </button>
-        </div>
-      </div>
-
-      <div class="header-right">
-        <el-button
-            v-if="step === 1"
-            icon="FolderAdd"
-            bg
-            text
-            @click="collectionRef?.show">
-          添加合集
+            v-if="step === 2"
+            icon="Back"
+            class="auto-button"
+            @click="handleBack">
+          重新选番
         </el-button>
-        <template v-else>
-          <el-button bg text @click="step = 1">
-            重新选番
-          </el-button>
-        </template>
-      </div>
-    </header>
+      </template>
+    </PageHeaderView>
 
     <div class="add-sub-body app-page-content app-page-padding">
       <!-- ================= STEP 1: 宫格式番剧浏览工作台 ================= -->
       <div v-if="step === 1" class="step-one-container">
+        <!-- 工具栏：数据源与过滤操作统一布局 -->
+        <div class="subscription-toolbar">
+          <div class="subscription-filters">
+            <el-select
+                v-model="activeSource"
+                class="subscription-select source-select"
+                placeholder="数据源"
+                @change="switchSource">
+              <el-option
+                  v-for="src in sourceList"
+                  :key="src.key"
+                  :label="src.label"
+                  :value="src.key"
+              />
+            </el-select>
+
+            <el-input
+                v-if="activeSource !== 'manual'"
+                v-model="searchKeyword"
+                class="subscription-search"
+                placeholder="搜索番剧名称..."
+                clearable
+                prefix-icon="Search"
+                @keyup.enter="handleSearch"
+                @clear="handleClearSearch"
+            >
+              <template #append>
+                <el-button icon="Search" :loading="searchLoading" @click="handleSearch"/>
+              </template>
+            </el-input>
+
+            <el-select
+                v-if="activeSource !== 'manual' && seasons.length"
+                v-model="selectedSeason"
+                class="subscription-select season-select"
+                placeholder="选择季度"
+                :disabled="animeListLoading || (searchKeyword && searchKeyword.length > 0)"
+                @change="handleSeasonChange">
+              <el-option
+                  v-for="s in seasons"
+                  :key="s.value"
+                  :label="s.label"
+                  :value="s.value"
+              />
+            </el-select>
+
+            <el-select
+                v-if="activeSource !== 'manual'"
+                v-model="filterSubscribeStatus"
+                class="subscription-select status-select"
+                placeholder="订阅状态">
+              <el-option label="全部状态" value="all"/>
+              <el-option label="仅未订阅" value="unsubscribed"/>
+              <el-option label="仅已订阅" value="subscribed"/>
+            </el-select>
+          </div>
+
+          <div class="subscription-actions">
+            <el-button
+                v-if="activeSource !== 'manual'"
+                class="auto-button"
+                icon="Refresh"
+                :loading="animeListLoading"
+                @click="retryLoad">
+              刷新
+            </el-button>
+            <el-button
+                class="auto-button"
+                icon="FolderAdd"
+                @click="collectionRef?.show">
+              添加合集
+            </el-button>
+          </div>
+        </div>
+
         <!-- 非手动模式：卡片宫格流 -->
         <template v-if="activeSource !== 'manual'">
-          <!-- 工具栏：筛选控制 -->
-          <div class="subscription-toolbar">
-            <div class="subscription-filters">
-              <el-input
-                  v-model="searchKeyword"
-                  class="subscription-search"
-                  placeholder="搜索番剧名称..."
-                  clearable
-                  prefix-icon="Search"
-                  @keyup.enter="handleSearch"
-                  @clear="handleClearSearch"
-              >
-                <template #append>
-                  <el-button icon="Search" :loading="searchLoading" @click="handleSearch"/>
-                </template>
-              </el-input>
-
-              <el-select
-                  v-if="seasons.length"
-                  v-model="selectedSeason"
-                  class="subscription-select season-select"
-                  placeholder="选择季度"
-                  :disabled="animeListLoading || (searchKeyword && searchKeyword.length > 0)"
-                  @change="handleSeasonChange">
-                <el-option
-                    v-for="s in seasons"
-                    :key="s.value"
-                    :label="s.label"
-                    :value="s.value"
-                />
-              </el-select>
-
-              <el-select
-                  v-model="filterSubscribeStatus"
-                  class="subscription-select status-select"
-                  placeholder="订阅状态">
-                <el-option label="全部状态" value="all"/>
-                <el-option label="仅未订阅" value="unsubscribed"/>
-                <el-option label="仅已订阅" value="subscribed"/>
-              </el-select>
-            </div>
-
-            <div class="subscription-actions">
-              <el-button
-                  class="auto-button"
-                  icon="Refresh"
-                  :loading="animeListLoading"
-                  @click="retryLoad">
-                刷新
-              </el-button>
-            </div>
-          </div>
 
           <!-- 星期快速导航胶囊栏 -->
           <div v-if="availableWeeks.length > 1" class="week-pills-bar">
@@ -149,7 +133,7 @@
                           v-for="anime in weekGroup.items"
                           :key="anime.id"
                           class="anime-grid-card-wrap"
-                          @click="openAnimeDrawer(anime)"
+                          @click="openAnimeDialog(anime)"
                       >
                         <el-card shadow="never" class="anime-card-box">
                           <div class="list-card-content">
@@ -274,35 +258,33 @@
           </div>
         </div>
 
-      <!-- ================= 字幕组选择抽屉 ================= -->
-      <el-drawer
-          v-model="drawerVisible"
-          :size="drawerWidth"
-          :with-header="false"
-          class="anime-drawer-modal"
+      <!-- ================= 字幕组选择弹窗 ================= -->
+      <el-dialog
+          v-model="dialogVisible"
+          :title="selectedAnime ? `选择字幕组 · ${selectedAnime.title}` : '选择字幕组'"
+          width="760px"
+          align-center
           destroy-on-close
+          class="anime-group-dialog"
       >
-        <div v-if="selectedAnime" class="drawer-content-wrap">
-          <!-- 抽屉头部 Hero Banner -->
-          <div class="drawer-header">
-            <div class="drawer-hero-card">
-              <img
-                  :src="proxyImage(selectedAnime.cover)"
-                  :alt="selectedAnime.title"
-                  class="drawer-hero-cover"
-              />
-              <div class="drawer-hero-info">
-                <div class="drawer-title-row">
-                  <h3 class="drawer-anime-title" :title="selectedAnime.title">{{ selectedAnime.title }}</h3>
-                  <el-button circle text icon="Close" @click="drawerVisible = false" class="drawer-close-btn"/>
-                </div>
-                <div class="drawer-hero-meta">
-                  <span v-if="selectedAnime.score > 0" class="drawer-score">
-                    评分: <strong>{{ Number(selectedAnime.score).toFixed(1) }}</strong>
-                  </span>
-                  <el-tag v-if="selectedAnime.exists" type="success" size="small">已在订阅中</el-tag>
-                </div>
-                <div class="drawer-external-links">
+        <div v-if="selectedAnime" class="group-dialog-body" v-loading="groupsLoading">
+          <!-- 弹窗内部番剧横幅卡片 -->
+          <div class="dialog-anime-banner">
+            <img
+                :src="proxyImage(selectedAnime.cover)"
+                :alt="selectedAnime.title"
+                class="dialog-anime-cover"
+            />
+            <div class="dialog-anime-info">
+              <div class="dialog-anime-title-row">
+                <h4 class="dialog-anime-title" :title="selectedAnime.title">{{ selectedAnime.title }}</h4>
+                <el-tag v-if="selectedAnime.exists" type="success" size="small">已在订阅中</el-tag>
+              </div>
+              <div class="dialog-anime-meta">
+                <span v-if="selectedAnime.score > 0" class="dialog-score">
+                  评分: <strong>{{ Number(selectedAnime.score).toFixed(1) }}</strong>
+                </span>
+                <div class="dialog-external-links">
                   <el-button
                       v-if="activeSource === 'mikan' && selectedAnime.rawId"
                       icon="Link"
@@ -335,8 +317,8 @@
             </div>
           </div>
 
-          <!-- 字幕组与种子资源面板 -->
-          <div v-loading="groupsLoading" class="drawer-groups-body">
+          <!-- 字幕组与资源区域 -->
+          <div class="dialog-groups-main">
             <div class="section-title-bar">
               <div class="title-with-count">
                 <h4>字幕组列表</h4>
@@ -416,49 +398,53 @@
                 <div class="torrents-header">
                   <span class="torrents-title">最新发布种子 ({{ selectedGroup.items.length }})</span>
                 </div>
-                <div v-if="selectedGroup.items.length" class="torrents-list">
-                  <div
-                      v-for="(t, ti) in selectedGroup.items"
-                      :key="ti"
-                      class="torrent-item-row">
-                    <div class="torrent-main">
-                      <span class="torrent-name" :title="t.title">{{ t.title }}</span>
-                      <div class="torrent-meta">
-                        <span class="meta-item">{{ t.size }}</span>
-                        <span class="meta-dot">·</span>
-                        <span class="meta-item">{{ t.date }}</span>
+                <div v-if="selectedGroup.items.length" class="torrents-list-wrap">
+                  <el-scrollbar max-height="240px">
+                    <div class="torrents-list">
+                      <div
+                          v-for="(t, ti) in selectedGroup.items"
+                          :key="ti"
+                          class="torrent-item-row">
+                        <div class="torrent-main">
+                          <span class="torrent-name" :title="t.title">{{ t.title }}</span>
+                          <div class="torrent-meta">
+                            <span class="meta-item">{{ t.size }}</span>
+                            <span class="meta-dot">·</span>
+                            <span class="meta-item">{{ t.date }}</span>
+                          </div>
+                        </div>
+                        <div class="torrent-actions">
+                          <el-button
+                              v-if="t.magnet"
+                              icon="CopyDocument"
+                              size="small"
+                              text
+                              bg
+                              title="复制磁力链接"
+                              @click="copyText(t.magnet)"
+                          />
+                          <el-button
+                              v-if="t.torrent"
+                              icon="Download"
+                              size="small"
+                              text
+                              bg
+                              title="下载种子文件"
+                              @click="openExternal(t.torrent)"
+                          />
+                          <el-button
+                              size="small"
+                              text
+                              type="primary"
+                              bg
+                              icon="Check"
+                              @click="subscribeCurrentGroup">
+                            订阅
+                          </el-button>
+                        </div>
                       </div>
                     </div>
-                    <div class="torrent-actions">
-                      <el-button
-                          v-if="t.magnet"
-                          icon="CopyDocument"
-                          size="small"
-                          text
-                          bg
-                          title="复制磁力链接"
-                          @click="copyText(t.magnet)"
-                      />
-                      <el-button
-                          v-if="t.torrent"
-                          icon="Download"
-                          size="small"
-                          text
-                          bg
-                          title="下载种子文件"
-                          @click="openExternal(t.torrent)"
-                      />
-                      <el-button
-                          size="small"
-                          text
-                          type="primary"
-                          bg
-                          icon="Check"
-                          @click="subscribeCurrentGroup">
-                        订阅
-                      </el-button>
-                    </div>
-                  </div>
+                  </el-scrollbar>
                 </div>
                 <el-empty v-else description="该字幕组暂无发布条目" :image-size="60"/>
               </div>
@@ -471,7 +457,7 @@
             />
           </div>
         </div>
-      </el-drawer>
+      </el-dialog>
       </div>
 
       <!-- ================= STEP 2: 配置确认与保存 ================= -->
@@ -514,6 +500,7 @@ import {
 import AniView from "@/view/home/AniView.vue";
 import CollectionView from "@/view/home/CollectionView.vue";
 import BgmView from "@/view/home/BgmView.vue";
+import PageHeaderView from "@/view/custom/PageHeaderView.vue";
 import {aniData} from "@/js/ani.js";
 import {proxyImage} from "@/js/global.js";
 import * as http from "@/js/http.js";
@@ -531,8 +518,7 @@ const bgmRef = ref()
 // 流程状态
 const step = ref(1) // 1: 浏览选番, 2: 确认配置
 const activeSource = ref('mikan') // mikan, ani-bt, anime-garden, manual
-const drawerVisible = ref(false)
-const drawerWidth = ref('560px')
+const dialogVisible = ref(false)
 const filterSubscribeStatus = ref('all') // all, unsubscribed, subscribed
 
 const sourceList = [
@@ -919,10 +905,10 @@ const retryLoad = () => {
   loadSourceData(searchKeyword.value)
 }
 
-// 打开字幕组抽屉并加载字幕组数据
-const openAnimeDrawer = (anime) => {
+// 打开字幕组弹窗并加载字幕组数据
+const openAnimeDialog = (anime) => {
   selectedAnime.value = anime
-  drawerVisible.value = true
+  dialogVisible.value = true
   selectAnime(anime)
 }
 
@@ -1005,7 +991,7 @@ const subscribeCurrentGroup = async () => {
     configuredAni.value = res.data
     configuredAni.value.showDownlaod = false
     configuredAni.value.match = aniPayload.match
-    drawerVisible.value = false
+    dialogVisible.value = false
     step.value = 2
   } catch (e) {
     ElMessage.error('解析 RSS 订阅失败: ' + (e.message || e))
@@ -1089,17 +1075,7 @@ const openExternal = (url) => {
   if (url) window.open(url, '_blank')
 }
 
-const updateDrawerWidth = () => {
-  if (window.innerWidth < 768) {
-    drawerWidth.value = '100%'
-  } else {
-    drawerWidth.value = '560px'
-  }
-}
-
 onMounted(() => {
-  updateDrawerWidth()
-  window.addEventListener('resize', updateDrawerWidth)
   loadSourceData()
 })
 
@@ -1110,10 +1086,6 @@ onActivated(() => {
   }
   loadSourceData()
 })
-
-onUnmounted(() => {
-  window.removeEventListener('resize', updateDrawerWidth)
-})
 </script>
 
 <style scoped>
@@ -1123,94 +1095,6 @@ onUnmounted(() => {
   flex-direction: column;
   overflow: hidden;
   background: var(--el-bg-color-page);
-}
-
-/* 顶栏 */
-.add-sub-header {
-  height: 56px;
-  flex-shrink: 0;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 0 20px;
-  background: var(--el-bg-color);
-  border-bottom: 1px solid var(--el-border-color-light);
-  gap: 16px;
-}
-
-.header-left {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-}
-
-.header-title-group {
-  display: flex;
-  flex-direction: column;
-}
-
-.header-title {
-  margin: 0;
-  font-size: 16px;
-  font-weight: 650;
-  color: var(--el-text-color-primary);
-  line-height: 1.2;
-}
-
-.header-subtitle {
-  font-size: 11px;
-  color: var(--el-text-color-secondary);
-  margin-top: 2px;
-}
-
-.header-center {
-  flex: 1;
-  display: flex;
-  justify-content: center;
-}
-
-.source-segmented {
-  display: flex;
-  align-items: center;
-  background: var(--el-fill-color-light);
-  padding: 3px;
-  border-radius: 8px;
-  gap: 4px;
-}
-
-.source-tab-btn {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  padding: 6px 14px;
-  border: none;
-  background: none;
-  border-radius: 6px;
-  font-size: 13px;
-  color: var(--el-text-color-regular);
-  cursor: pointer;
-  transition: all 0.2s ease;
-}
-
-.source-tab-btn:hover {
-  color: var(--el-text-color-primary);
-}
-
-.source-tab-btn.is-active {
-  background: var(--el-bg-color);
-  color: var(--el-color-primary);
-  font-weight: 600;
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
-}
-
-.source-tab-icon {
-  width: 16px;
-  height: 16px;
-  border-radius: 3px;
-}
-
-.source-tab-icon-el {
-  font-size: 14px;
 }
 
 /* 主体容器 */
@@ -1266,6 +1150,10 @@ onUnmounted(() => {
 
 .subscription-select {
   width: 130px;
+}
+
+.source-select {
+  width: 140px;
 }
 
 /* 星期胶囊导航 */
@@ -1461,94 +1349,90 @@ onUnmounted(() => {
   height: 16px;
 }
 
-/* ================= 抽屉面板样式 ================= */
-.anime-drawer-modal :deep(.el-drawer__body) {
-  padding: 0;
-  overflow-y: auto;
+/* ================= 字幕组弹窗样式 ================= */
+.anime-group-dialog :deep(.el-dialog__body) {
+  padding: 16px 20px 24px;
   background: var(--el-bg-color-page);
 }
 
-.drawer-content-wrap {
+.group-dialog-body {
   display: flex;
   flex-direction: column;
-  min-height: 100%;
+  gap: 14px;
+  max-height: 75vh;
+  overflow-y: auto;
+  padding-right: 2px;
 }
 
-.drawer-header {
-  padding: 20px;
-  background: var(--el-bg-color);
-  border-bottom: 1px solid var(--el-border-color-lighter);
-}
-
-.drawer-hero-card {
+.dialog-anime-banner {
   display: flex;
-  gap: 16px;
-  align-items: flex-start;
+  gap: 14px;
+  padding: 12px 14px;
+  border-radius: 10px;
+  background: var(--el-bg-color);
+  border: 1px solid var(--el-border-color-lighter);
+  align-items: center;
 }
 
-.drawer-hero-cover {
-  width: 80px;
-  height: 112px;
-  border-radius: 8px;
+.dialog-anime-cover {
+  width: 60px;
+  height: 84px;
+  border-radius: 6px;
   object-fit: cover;
   flex-shrink: 0;
-  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
 }
 
-.drawer-hero-info {
+.dialog-anime-info {
   flex: 1;
   min-width: 0;
   display: flex;
   flex-direction: column;
-  gap: 6px;
+  gap: 4px;
 }
 
-.drawer-title-row {
+.dialog-anime-title-row {
   display: flex;
-  align-items: flex-start;
+  align-items: center;
   justify-content: space-between;
   gap: 8px;
 }
 
-.drawer-anime-title {
+.dialog-anime-title {
   margin: 0;
-  font-size: 16px;
+  font-size: 15px;
   font-weight: 700;
   color: var(--el-text-color-primary);
-  line-height: 1.35;
+  line-height: 1.3;
 }
 
-.drawer-close-btn {
-  flex-shrink: 0;
-}
-
-.drawer-hero-meta {
+.dialog-anime-meta {
   display: flex;
   align-items: center;
+  justify-content: space-between;
   gap: 10px;
+  flex-wrap: wrap;
 }
 
-.drawer-score {
-  font-size: 13px;
+.dialog-score {
+  font-size: 12px;
   color: var(--el-text-color-secondary);
 }
 
-.drawer-score strong {
+.dialog-score strong {
   color: #fb7299;
-  font-size: 14px;
+  font-size: 13px;
 }
 
-.drawer-external-links {
+.dialog-external-links {
   display: flex;
   gap: 8px;
-  margin-top: 4px;
 }
 
-.drawer-groups-body {
-  padding: 16px 20px 40px;
+.dialog-groups-main {
   display: flex;
   flex-direction: column;
-  gap: 14px;
+  gap: 12px;
 }
 
 .subgroups-pills-bar {
