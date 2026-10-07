@@ -125,6 +125,14 @@
                 @click="openManualDialog">
               手动 RSS
             </el-button>
+            <el-badge :value="batchCart.length" :hidden="!batchCart.length" class="batch-cart-badge-wrap">
+              <el-button
+                  class="auto-button"
+                  icon="Files"
+                  @click="openBatchCartDialog">
+                待订阅清单
+              </el-button>
+            </el-badge>
           </div>
         </div>
 
@@ -325,6 +333,104 @@
               </div>
             </el-scrollbar>
           </div>
+
+      <!-- ================= 待订阅清单弹窗 (方案 B: 批量订阅) ================= -->
+      <el-dialog
+          v-model="batchCartDialogVisible"
+          title="待订阅清单"
+          width="720px"
+          align-center
+          append-to-body
+          :close-on-click-modal="!batchExecuting"
+          :close-on-press-escape="!batchExecuting"
+          :show-close="!batchExecuting"
+          class="batch-cart-dialog"
+      >
+        <div v-if="!batchExecuting" class="batch-cart-content">
+          <div class="batch-cart-header">
+            <span class="batch-cart-tip">
+              当前清单中共有 <strong>{{ batchCart.length }}</strong> 部待订阅番剧：
+            </span>
+            <el-button
+                v-if="batchCart.length"
+                type="danger"
+                text
+                size="small"
+                icon="Delete"
+                @click="clearBatchCart"
+            >
+              清空清单
+            </el-button>
+          </div>
+
+          <div v-if="batchCart.length" class="batch-cart-list-wrap">
+            <el-scrollbar max-height="420px">
+              <div class="batch-cart-list">
+                <div
+                    v-for="(item, index) in batchCart"
+                    :key="`${item.animeId}_${item.source}_${item.groupLabel}`"
+                    class="batch-cart-item-row"
+                >
+                  <img :src="proxyImage(item.cover)" class="batch-cart-item-cover" />
+                  <div class="batch-cart-item-info">
+                    <div class="batch-cart-title" :title="item.animeTitle">{{ item.animeTitle }}</div>
+                    <div class="batch-cart-meta">
+                      <el-tag size="small" type="primary" effect="plain">{{ item.sourceLabel }}</el-tag>
+                      <el-tag size="small" type="success" effect="plain">{{ item.groupLabel }}</el-tag>
+                    </div>
+                  </div>
+                  <el-button
+                      type="danger"
+                      text
+                      bg
+                      size="small"
+                      icon="Close"
+                      title="从清单中移除"
+                      @click="removeBatchCartItem(index)"
+                  />
+                </div>
+              </div>
+            </el-scrollbar>
+          </div>
+
+          <div v-else class="batch-cart-empty">
+            <el-empty description="待订阅清单为空">
+              <template #extra>
+                <span class="empty-tip">在番剧卡片中点击「订阅」，选择站点与字幕组后点击「加入待订阅」即可添加到清单</span>
+              </template>
+            </el-empty>
+          </div>
+        </div>
+
+        <!-- 批量执行进度 -->
+        <div v-else class="batch-executing-wrap">
+          <div class="batch-executing-title">正在批量添加订阅</div>
+          <el-progress
+              :percentage="Math.round((batchProgress.current / batchProgress.total) * 100)"
+              :stroke-width="14"
+              striped
+              striped-flow
+          />
+          <div class="batch-executing-info">
+            <span>{{ batchProgress.current }} / {{ batchProgress.total }}</span>
+            <span class="batch-executing-curr">正在订阅：{{ batchProgress.currentTitle }} ({{ batchProgress.currentGroup }})</span>
+          </div>
+        </div>
+
+        <template #footer>
+          <div v-if="!batchExecuting" class="dialog-footer">
+            <el-button @click="batchCartDialogVisible = false">关闭</el-button>
+            <el-button
+                type="primary"
+                icon="Check"
+                :disabled="!batchCart.length"
+                @click="executeBatchCartSubscribe"
+            >
+              一键全部订阅 ({{ batchCart.length }})
+            </el-button>
+          </div>
+        </template>
+      </el-dialog>
 
       <!-- ================= 手动添加 RSS 弹窗 ================= -->
       <el-dialog
@@ -572,6 +678,16 @@
                   </el-select>
 
                   <el-button
+                      type="warning"
+                      plain
+                      size="default"
+                      icon="FolderAdd"
+                      class="add-cart-btn"
+                      @click="addToBatchCart">
+                    加入待订阅
+                  </el-button>
+
+                  <el-button
                       type="primary"
                       size="default"
                       icon="Plus"
@@ -694,6 +810,7 @@ import {
   CopyDocument,
   Download,
   Edit,
+  Files,
   FolderAdd,
   Grid,
   Link,
@@ -735,6 +852,16 @@ const multiSubList = ref([])
 
 const openManualDialog = () => {
   manualDialogVisible.value = true
+}
+
+// 待订阅清单 (方案 B: 批量订阅)
+const batchCart = useLocalStorage('ani_rss_batch_cart', [])
+const batchCartDialogVisible = ref(false)
+const batchExecuting = ref(false)
+const batchProgress = ref({ current: 0, total: 0, currentTitle: '', currentGroup: '' })
+
+const openBatchCartDialog = () => {
+  batchCartDialogVisible.value = true
 }
 
 // 弹窗内部支持的 RSS 下载数据源
@@ -1475,6 +1602,133 @@ const subscribeCurrentGroup = async () => {
     subscribingLoading.value = false
   }
 }
+
+// ================= 方案 B：待订阅清单与批量订阅方法 =================
+const addToBatchCart = () => {
+  if (!selectedAnime.value || !selectedGroup.value) return
+
+  const anime = selectedAnime.value
+  const grp = selectedGroup.value
+  const animeId = anime.bgmId || anime.id
+  const subgroupName = grp.subgroup || grp.label || ''
+  const source = activeDialogSource.value
+  const sourceLabel = currentDialogSourceLabel.value
+
+  // 提取画质过滤规则
+  let matchArray = []
+  if (selectedRegexOption.value) {
+    try {
+      matchArray = JSON.parse(selectedRegexOption.value)
+    } catch {
+      matchArray = []
+    }
+  }
+
+  const bgmUrl = grp.bgmUrl || (anime.bgmId ? `https://bgm.tv/subject/${anime.bgmId}` : '')
+  const rssUrl = grp.rss || (grp.items?.[0]?.magnet || '')
+
+  // 检查是否已经在清单中
+  const existsIndex = batchCart.value.findIndex(
+      item => item.animeId === animeId && item.source === source && item.subgroup === subgroupName
+  )
+
+  if (existsIndex > -1) {
+    ElMessage.warning(`【${anime.title}】的【${subgroupName}】字幕组已在待订阅清单中`)
+    return
+  }
+
+  batchCart.value.push({
+    animeId,
+    animeTitle: anime.title || '',
+    cover: anime.cover || '',
+    source,
+    sourceLabel,
+    groupLabel: grp.label || subgroupName,
+    subgroup: subgroupName,
+    bgmUrl,
+    rss: rssUrl,
+    match: matchArray.map(s => `{{${subgroupName}}}:${s}`)
+  })
+
+  ElMessage.success(`已加入待订阅清单：${anime.title} (${grp.label || subgroupName})`)
+  // 自动关闭当前弹窗，方便用户继续浏览挑选
+  dialogVisible.value = false
+}
+
+const removeBatchCartItem = (index) => {
+  if (index >= 0 && index < batchCart.value.length) {
+    const removed = batchCart.value.splice(index, 1)[0]
+    if (removed) {
+      ElMessage.info(`已移除：${removed.animeTitle}`)
+    }
+  }
+}
+
+const clearBatchCart = () => {
+  batchCart.value = []
+  ElMessage.info('待订阅清单已清空')
+}
+
+const executeBatchCartSubscribe = async () => {
+  if (!batchCart.value.length) {
+    ElMessage.warning('待订阅清单为空')
+    return
+  }
+
+  const itemsToSubscribe = [...batchCart.value]
+  batchExecuting.value = true
+  batchProgress.value = {
+    current: 0,
+    total: itemsToSubscribe.length,
+    currentTitle: '',
+    currentGroup: ''
+  }
+
+  let successCount = 0
+  let failedCount = 0
+
+  for (let i = 0; i < itemsToSubscribe.length; i++) {
+    const item = itemsToSubscribe[i]
+    batchProgress.value.current = i + 1
+    batchProgress.value.currentTitle = item.animeTitle || ''
+    batchProgress.value.currentGroup = item.groupLabel || item.subgroup || ''
+
+    try {
+      const aniPayload = {
+        ...JSON.parse(JSON.stringify(aniData)),
+        type: item.source,
+        url: item.rss,
+        bgmUrl: item.bgmUrl,
+        subgroup: item.subgroup,
+        match: item.match || [],
+        title: item.animeTitle || ''
+      }
+
+      const res = await http.rssToAni(aniPayload)
+      const configured = res.data
+      configured.showDownlaod = false
+      if (item.match && item.match.length) {
+        configured.match = item.match
+      }
+      await http.addAni(configured)
+      successCount++
+    } catch (e) {
+      console.error(`批量订阅失败 [${item.animeTitle}]:`, e)
+      failedCount++
+    }
+  }
+
+  batchExecuting.value = false
+  batchCart.value = []
+  batchCartDialogVisible.value = false
+
+  ElMessage.success(`批量订阅完成：成功 ${successCount} 部${failedCount > 0 ? `，失败 ${failedCount} 部` : ''}`)
+  window.$reLoadList?.()
+
+  await loadSubscribedList()
+  updateSubscribedInfoForAnimeList()
+}
+
 
 // 手动模式提交
 const submitManualRss = async () => {
@@ -2510,6 +2764,173 @@ onActivated(() => {
   padding: 24px;
   border-radius: 12px;
   border: 1px solid var(--el-border-color-lighter);
+}
+
+/* ================= 批量模式相关样式 ================= */
+.list-week-title-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 12px;
+}
+
+.list-week-title-row .list-week-title {
+  margin-bottom: 0;
+}
+
+.week-batch-btn {
+  font-size: 13px;
+  font-weight: 500;
+}
+
+.anime-grid-card-wrap.is-batch-mode,
+.anime-list-item-wrap.is-batch-mode {
+  cursor: pointer;
+}
+
+.anime-grid-card-wrap.is-batch-selected .anime-card-box,
+.anime-list-item-wrap.is-batch-selected .anime-row-card-box {
+  border-color: var(--el-color-primary) !important;
+  box-shadow: 0 0 0 1px var(--el-color-primary), 0 4px 14px rgba(64, 158, 255, 0.22) !important;
+  background-color: var(--el-color-primary-light-9) !important;
+}
+
+.anime-grid-card-wrap.is-batch-disabled,
+.anime-list-item-wrap.is-batch-disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.batch-cart-badge-wrap :deep(.el-badge__content) {
+  top: 4px;
+  right: 4px;
+}
+
+.add-cart-btn {
+  font-weight: 500;
+}
+
+/* 待订阅清单弹窗样式 */
+.batch-cart-dialog :deep(.el-dialog__body) {
+  padding: 16px 20px 20px;
+}
+
+.batch-cart-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 12px;
+}
+
+.batch-cart-tip {
+  font-size: 13px;
+  color: var(--el-text-color-regular);
+}
+
+.batch-cart-tip strong {
+  color: var(--el-color-primary);
+  font-size: 15px;
+}
+
+.batch-cart-list-wrap {
+  border: 1px solid var(--el-border-color-lighter);
+  border-radius: 8px;
+  background: var(--el-fill-color-lighter);
+  padding: 6px;
+}
+
+.batch-cart-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.batch-cart-item-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  background: var(--el-bg-color);
+  border: 1px solid var(--el-border-color-lighter);
+  border-radius: 8px;
+  padding: 8px 12px;
+  transition: all 0.2s;
+}
+
+.batch-cart-item-row:hover {
+  border-color: var(--el-border-color);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
+}
+
+.batch-cart-item-cover {
+  width: 36px;
+  height: 48px;
+  object-fit: cover;
+  border-radius: 4px;
+  flex-shrink: 0;
+  background: var(--el-fill-color-dark);
+}
+
+.batch-cart-item-info {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.batch-cart-title {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--el-text-color-primary);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.batch-cart-meta {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.batch-cart-empty {
+  padding: 24px 0;
+}
+
+.batch-cart-empty .empty-tip {
+  font-size: 12px;
+  color: var(--el-text-color-secondary);
+  display: block;
+  margin-top: 4px;
+}
+
+.batch-executing-wrap {
+  padding: 24px 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.batch-executing-title {
+  font-size: 16px;
+  font-weight: 600;
+  color: var(--el-text-color-primary);
+}
+
+.batch-executing-info {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-size: 13px;
+  color: var(--el-text-color-secondary);
+}
+
+.batch-executing-curr {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  max-width: 480px;
+  color: var(--el-color-primary);
 }
 </style>
 
