@@ -7,6 +7,22 @@
     <CoverView ref="coverRef"/>
     <DelAniView ref="delAniRef" @callback="handleDelSaved"/>
 
+    <!-- 确认番剧配置弹窗 (第二步) -->
+    <el-dialog
+        v-model="configDialogVisible"
+        title="确认番剧配置"
+        width="min(680px, calc(100vw - 24px))"
+        align-center
+        center
+        destroy-on-close
+        append-to-body
+        class="config-ani-dialog"
+    >
+      <div class="config-dialog-content">
+        <AniView v-model:ani="configuredAni" @callback="handleSaveConfiguredAni"/>
+      </div>
+    </el-dialog>
+
     <!-- 多订阅选择弹窗 -->
     <el-dialog
         v-model="multiSubDialogVisible"
@@ -30,22 +46,12 @@
     <!-- 统一页面头部 -->
     <PageHeaderView
         title="RSS"
-        :subtitle="step === 1 ? `${selectedSeason || '季度番剧'} · 共 ${totalAnimeCount} 部番剧` : '第 2 步：确认与微调订阅配置'"
-    >
-      <template #actions>
-        <el-button
-            v-if="step === 2"
-            icon="Back"
-            class="auto-button"
-            @click="handleBack">
-          重新选番
-        </el-button>
-      </template>
-    </PageHeaderView>
+        :subtitle="`${selectedSeason || '季度番剧'} · 共 ${totalAnimeCount} 部番剧`"
+    />
 
     <div class="add-sub-body app-page-content app-page-padding">
-      <!-- ================= STEP 1: 宫格式番剧浏览工作台 ================= -->
-      <div v-if="step === 1" class="step-one-container">
+      <!-- 宫格式番剧浏览工作台 -->
+      <div class="step-one-container">
         <!-- 工具栏：权威季度番剧与过滤操作 -->
         <div class="subscription-toolbar">
           <div class="subscription-filters">
@@ -224,8 +230,8 @@
                             <div class="list-card-info">
                               <div class="list-card-info-inner">
                                 <div class="card-title-row">
-                                  <el-tooltip :show-after="300" :content="anime.title" placement="top">
-                                    <el-text class="list-card-title" line-clamp="2" truncated>
+                                  <el-tooltip :show-after="300" :content="`${anime.title} (点击在 Bangumi 查看)`" placement="top">
+                                    <el-text class="list-card-title clickable-title" line-clamp="2" truncated @click.stop="openBgmUrl(anime)">
                                       {{ anime.title }}
                                     </el-text>
                                   </el-tooltip>
@@ -319,8 +325,8 @@
                             </div>
                             <div class="list-row-info">
                               <div class="list-row-title-row">
-                                <el-tooltip :show-after="300" :content="anime.title" placement="top">
-                                  <el-text class="list-row-title" truncated>
+                                <el-tooltip :show-after="300" :content="`${anime.title} (点击在 Bangumi 查看)`" placement="top">
+                                  <el-text class="list-row-title clickable-title" truncated @click.stop="openBgmUrl(anime)">
                                     {{ anime.title }}
                                   </el-text>
                                 </el-tooltip>
@@ -499,7 +505,7 @@
                 >
                   <img :src="proxyImage(item.cover)" class="batch-cart-item-cover" />
                   <div class="batch-cart-item-info">
-                    <div class="batch-cart-title" :title="item.animeTitle">{{ item.animeTitle }}</div>
+                    <div class="batch-cart-title clickable-title" :title="`${item.animeTitle} (点击在 Bangumi 查看)`" @click.stop="openBgmUrl(item)">{{ item.animeTitle }}</div>
                     <div class="batch-cart-meta">
                       <el-tag size="small" type="primary" effect="plain">{{ item.sourceLabel }}</el-tag>
                       <el-tag size="small" type="success" effect="plain">{{ item.groupLabel }}</el-tag>
@@ -649,7 +655,7 @@
             />
             <div class="anime-header-detail">
               <div class="anime-header-title-row">
-                <span class="anime-header-title" :title="selectedAnime.title">{{ selectedAnime.title }}</span>
+                <span class="anime-header-title clickable-title" :title="`${selectedAnime.title} (点击在 Bangumi 查看)`" @click.stop="openBgmUrl(selectedAnime)">{{ selectedAnime.title }}</span>
                 <el-tag v-if="selectedAnime.exists" type="success" size="small">已在订阅中</el-tag>
               </div>
               <div class="anime-header-meta-row">
@@ -887,21 +893,6 @@
         </div>
       </el-dialog>
       </div>
-
-      <!-- ================= STEP 2: 配置确认与保存 ================= -->
-      <div v-else-if="step === 2" class="step-two-container">
-        <el-scrollbar class="step-two-scroll">
-          <div class="step-two-content-wrap">
-            <div class="step-two-header">
-              <h2>确认番剧配置</h2>
-              <p>请核对并调整番剧的标题、TMDB 刮削信息、排除匹配规则与下载路径</p>
-            </div>
-            <div class="step-two-form-card">
-              <AniView v-model:ani="configuredAni" @callback="handleSaveConfiguredAni"/>
-            </div>
-          </div>
-        </el-scrollbar>
-      </div>
     </div>
   </div>
 </template>
@@ -962,7 +953,7 @@ const coverRef = ref()
 const delAniRef = ref()
 
 // 流程状态
-const step = ref(1) // 1: 浏览选番, 2: 确认配置
+const configDialogVisible = ref(false) // 确认番剧配置弹窗显隐
 const manualDialogVisible = ref(false) // 手动输入 RSS 弹窗显隐
 const dialogVisible = ref(false)
 const filterSubscribeStatus = ref('all') // all, unsubscribed, subscribed, enabled, disabled
@@ -1306,11 +1297,39 @@ const matchedRegexOptions = computed(() => {
 // 点击封面弹出更换封面弹窗 (需求2)
 const handleCoverClick = (anime) => {
   if (!anime) return
+  if (isManageMode.value) {
+    handleCardClick(anime)
+    return
+  }
   const matched = findMatchedSubscriptions(anime)
   if (matched.length > 0) {
     coverRef.value?.show(matched[0])
   } else {
     ElMessage.info('未订阅的番剧暂无本地记录，无法更换封面')
+  }
+}
+
+// 点击番剧标题在新标签页打开 bgm.tv 详情页
+const openBgmUrl = (anime) => {
+  if (!anime) return
+  if (isManageMode.value) {
+    handleCardClick(anime)
+    return
+  }
+  const bgmId = anime.bgmId || anime.rawId || anime.id || anime.animeId
+  if (bgmId && /^\d+$/.test(String(bgmId))) {
+    window.open(`https://bgm.tv/subject/${bgmId}`, '_blank', 'noopener')
+    return
+  }
+  if (anime.bgmUrl && anime.bgmUrl.startsWith('http')) {
+    window.open(anime.bgmUrl, '_blank', 'noopener')
+    return
+  }
+  const rawTitle = anime.title || anime.animeTitle || ''
+  if (rawTitle) {
+    let title = rawTitle.replace(/ ?\((19|20)\d{2}\)/g, '').trim()
+    title = title.replace(/ ?\[tmdbid=(\d+)]/g, '').trim()
+    window.open(`https://bgm.tv/subject_search/${encodeURIComponent(title)}?cat=2`, '_blank', 'noopener')
   }
 }
 
@@ -1323,16 +1342,10 @@ const handleCardClick = (anime) => {
   }
 }
 
-// 切换管理模式 (需求4)
+// 切换管理模式 (需求4) - 保持当前视图模式，不再强制切换到列表
 const toggleManageMode = () => {
   isManageMode.value = !isManageMode.value
-  if (isManageMode.value) {
-    // 默认切换为列表布局
-    viewLayoutMode.value = 'list'
-    selectedManageIds.value = []
-  } else {
-    selectedManageIds.value = []
-  }
+  selectedManageIds.value = []
 }
 
 // 判断某番剧是否在管理多选中
@@ -1966,7 +1979,7 @@ const subscribeCurrentGroup = async () => {
     configuredAni.value.showDownlaod = false
     configuredAni.value.match = aniPayload.match
     dialogVisible.value = false
-    step.value = 2
+    configDialogVisible.value = true
   } catch (e) {
     ElMessage.error('解析 RSS 订阅失败: ' + (e.message || e))
   } finally {
@@ -2122,7 +2135,7 @@ const submitManualRss = async () => {
     configuredAni.value = res.data
     configuredAni.value.showDownlaod = false
     manualDialogVisible.value = false
-    step.value = 2
+    configDialogVisible.value = true
   } catch (e) {
     ElMessage.error('解析 RSS 订阅失败: ' + (e.message || e))
   } finally {
@@ -2136,7 +2149,7 @@ const handleSaveConfiguredAni = (done) => {
       .then(res => {
         ElMessage.success(res.message || '添加订阅成功')
         window.$reLoadList?.()
-        step.value = 1
+        configDialogVisible.value = false
         loadSubscribedList().then(() => {
           loadAuthorityData()
         })
@@ -2147,11 +2160,6 @@ const handleSaveConfiguredAni = (done) => {
       .finally(() => {
         done?.()
       })
-}
-
-// 返回导航
-const handleBack = () => {
-  step.value = 1
 }
 
 // 辅助方法
@@ -2181,9 +2189,6 @@ onMounted(() => {
 })
 
 onActivated(() => {
-  if (step.value === 2) {
-    step.value = 1
-  }
   loadSubscribedList().then(() => {
     loadAuthorityData()
   })
@@ -2364,27 +2369,61 @@ onActivated(() => {
 }
 
 .anime-grid-card-wrap.is-manage-mode {
-  padding-left: 28px;
+  padding-left: 0;
 }
 
 .card-manage-check {
   position: absolute;
-  left: 6px;
-  top: 50%;
-  transform: translateY(-50%);
-  z-index: 2;
+  left: 10px;
+  top: 10px;
+  z-index: 10;
   display: flex;
   align-items: center;
+  justify-content: center;
+  background: rgba(0, 0, 0, 0.65);
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
+  padding: 4px;
+  border-radius: 6px;
+  border: 1px solid rgba(255, 255, 255, 0.25);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.card-manage-check :deep(.el-checkbox) {
+  height: auto;
+  margin-right: 0;
+}
+
+.card-manage-check :deep(.el-checkbox__inner) {
+  border-radius: 4px;
+}
+
+.anime-grid-card-wrap.is-selected .card-manage-check {
+  background: var(--el-color-primary);
+  border-color: var(--el-color-primary);
 }
 
 .anime-grid-card-wrap.is-selected .anime-card-box {
   border-color: var(--el-color-primary) !important;
   background: var(--el-color-primary-light-9) !important;
+  box-shadow: 0 0 0 2px var(--el-color-primary), 0 4px 14px rgba(0, 0, 0, 0.12) !important;
 }
 
 .anime-grid-card-wrap.is-disabled {
   opacity: 0.6;
   cursor: not-allowed;
+}
+
+.anime-grid-card-wrap.is-disabled .card-manage-check {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.anime-grid-card-wrap.is-disabled .anime-card-box:hover {
+  transform: none;
+  box-shadow: none;
+  border-color: var(--el-border-color-light);
 }
 
 .anime-card-box {
@@ -2471,6 +2510,16 @@ onActivated(() => {
   font-weight: 600;
   color: var(--el-text-color-primary);
   line-height: 1.4;
+}
+
+.clickable-title {
+  cursor: pointer;
+  transition: color 0.15s ease;
+}
+
+.clickable-title:hover {
+  color: var(--el-color-primary) !important;
+  text-decoration: underline;
 }
 
 /* 番剧卡片播出时间样式 */
@@ -3215,43 +3264,13 @@ onActivated(() => {
   margin: 16px 0 8px;
 }
 
-/* ================= Step 2 配置确认 ================= */
-.step-two-container {
-  height: 100%;
+/* ================= 第二步：确认番剧配置弹窗 ================= */
+.config-ani-dialog :deep(.el-dialog__body) {
+  padding: 10px 18px 18px;
 }
 
-.step-two-scroll {
-  height: 100%;
-}
-
-.step-two-content-wrap {
-  max-width: 860px;
-  margin: 0 auto;
-  padding: 24px 20px 48px;
-}
-
-.step-two-header {
-  margin-bottom: 20px;
-}
-
-.step-two-header h2 {
-  margin: 0 0 6px;
-  font-size: 18px;
-  font-weight: 650;
-  color: var(--el-text-color-primary);
-}
-
-.step-two-header p {
-  margin: 0;
-  font-size: 13px;
-  color: var(--el-text-color-secondary);
-}
-
-.step-two-form-card {
-  background: var(--el-bg-color);
-  padding: 24px;
-  border-radius: 12px;
-  border: 1px solid var(--el-border-color-lighter);
+.config-dialog-content {
+  min-width: 0;
 }
 
 /* ================= 批量模式相关样式 ================= */

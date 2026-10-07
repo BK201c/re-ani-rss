@@ -95,8 +95,13 @@ import {coverClickAction, showLastDownloadTime, showScore, toApiFile} from "@/js
 import {Delete, Edit as EditIcon, Picture} from "@element-plus/icons-vue";
 
 let openBgmUrl = (it) => {
-  if (it.bgmUrl?.length) {
+  if (it.bgmUrl && it.bgmUrl.startsWith('http')) {
     window.open(it.bgmUrl, '_blank', 'noopener')
+    return
+  }
+  const bgmId = it.bgmId || (it.bgmUrl && /^\d+$/.test(it.bgmUrl) ? it.bgmUrl : '')
+  if (bgmId) {
+    window.open(`https://bgm.tv/subject/${bgmId}`, '_blank', 'noopener')
     return
   }
   if (it.title?.length) {
@@ -157,6 +162,12 @@ const handleCoverClick = () => {
   font-size: 0.97em;
   cursor: pointer;
   color: var(--el-text-color-primary);
+  transition: color 0.15s ease;
+}
+
+.list-card-title:hover {
+  color: var(--el-color-primary);
+  text-decoration: underline;
 }
 
 .list-card-score-container {

@@ -123,8 +123,13 @@ const handleCoverClick = () => {
 }
 
 const openBgmUrl = it => {
-  if (it.bgmUrl?.length) {
+  if (it.bgmUrl && it.bgmUrl.startsWith('http')) {
     window.open(it.bgmUrl, '_blank', 'noopener')
+    return
+  }
+  const bgmId = it.bgmId || (it.bgmUrl && /^\d+$/.test(it.bgmUrl) ? it.bgmUrl : '')
+  if (bgmId) {
+    window.open(`https://bgm.tv/subject/${bgmId}`, '_blank', 'noopener')
     return
   }
   if (it.title?.length) {
@@ -280,6 +285,12 @@ const emit = defineEmits(['edit', 'cover', 'del', 'rate'])
   cursor: pointer;
   color: #ffffff;
   text-shadow: 0 1px 2px rgba(0, 0, 0, 0.7);
+  transition: color 0.15s ease;
+}
+
+.cover-title:hover {
+  color: var(--el-color-primary-light-3);
+  text-decoration: underline;
 }
 
 .cover-meta {
