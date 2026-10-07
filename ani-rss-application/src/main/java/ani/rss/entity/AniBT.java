@@ -59,6 +59,8 @@ public class AniBT implements Serializable {
         private Long airingAt;
         @Schema(description = "排期状态")
         private String scheduleStatus;
+        @Schema(description = "总集数")
+        private Integer episodes;
     }
 
     @Data

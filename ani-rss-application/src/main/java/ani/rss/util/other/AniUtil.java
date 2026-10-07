@@ -132,6 +132,9 @@ public class AniUtil {
 
         Ani ani = AniUtil.createAni();
         ani.setUrl(url);
+        if (dto.getTotalEpisodeNumber() != null && dto.getTotalEpisodeNumber() > 0) {
+            ani.setTotalEpisodeNumber(dto.getTotalEpisodeNumber());
+        }
 
         Map<String, String> paramMap = HttpUtil.decodeParamMap(url, StandardCharsets.UTF_8);
 

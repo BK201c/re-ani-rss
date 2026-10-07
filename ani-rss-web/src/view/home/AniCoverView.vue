@@ -100,7 +100,7 @@ const scoreText = computed(() => {
 })
 const episodeText = computed(() => {
   const current = props.item.currentEpisodeNumber || 0
-  const total = props.item.totalEpisodeNumber || '*'
+  const total = props.item.totalEpisodeNumber || props.item.episodes || '*'
   return `${current}/${total}`
 })
 

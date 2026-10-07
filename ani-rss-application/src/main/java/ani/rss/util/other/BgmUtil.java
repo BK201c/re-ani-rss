@@ -790,21 +790,24 @@ public class BgmUtil {
      * @return 集数
      */
     public static Integer getEps(BgmInfo bgmInfo) {
-        int eps = bgmInfo.getEps();
-        String subjectId = bgmInfo.getId();
-        if (eps < 1) {
+        if (bgmInfo == null) {
             return 0;
         }
-        try {
-            int size = BgmUtil.getEpisodes(subjectId, 0).size();
-            if (size > 0) {
-                // 获取集数不为零
-                eps = size;
+        int eps = ObjectUtil.defaultIfNull(bgmInfo.getEps(), 0);
+        int totalEpisodes = ObjectUtil.defaultIfNull(bgmInfo.getTotalEpisodes(), 0);
+        int total = Math.max(eps, totalEpisodes);
+        String subjectId = bgmInfo.getId();
+        if (total < 1 && StrUtil.isNotBlank(subjectId)) {
+            try {
+                int size = BgmUtil.getEpisodes(subjectId, 0).size();
+                if (size > 0) {
+                    total = size;
+                }
+            } catch (Exception e) {
+                log.error(e.getMessage(), e);
             }
-        } catch (Exception e) {
-            log.error(e.getMessage(), e);
         }
-        return eps;
+        return total;
     }
 
     /**
@@ -822,6 +825,9 @@ public class BgmUtil {
         String title = BgmUtil.getFinalName(bgmInfo);
 
         int eps = getEps(bgmInfo);
+        if (eps < 1 && ani.getTotalEpisodeNumber() != null && ani.getTotalEpisodeNumber() > 0) {
+            eps = ani.getTotalEpisodeNumber();
+        }
 
         BgmInfo.Images images = bgmInfo.getImages();
 

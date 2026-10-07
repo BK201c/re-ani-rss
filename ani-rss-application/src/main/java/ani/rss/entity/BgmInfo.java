@@ -42,6 +42,13 @@ public class BgmInfo implements Serializable {
     private Integer eps;
 
     /**
+     * 总集数
+     */
+    @SerializedName(value = "totalEpisodes", alternate = "total_episodes")
+    @Schema(description = "总集数")
+    private Integer totalEpisodes;
+
+    /**
      * 时间
      */
     @Schema(description = "时间")

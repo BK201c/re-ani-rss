@@ -46,4 +46,14 @@ class AniRssApplicationTests {
         System.out.println(bgmInfo);
     }
 
+    @Test
+    void romeliaEpsTest() {
+        ConfigUtil.load();
+        BgmInfo bgmInfo = BgmUtil.getBgmInfo("511936");
+        org.junit.jupiter.api.Assertions.assertNotNull(bgmInfo);
+        org.junit.jupiter.api.Assertions.assertEquals(24, bgmInfo.getTotalEpisodes());
+        int eps = BgmUtil.getEps(bgmInfo);
+        org.junit.jupiter.api.Assertions.assertEquals(24, eps);
+    }
+
 }

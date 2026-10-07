@@ -897,7 +897,7 @@
 </template>
 
 <script setup>
-import {computed, onActivated, onMounted, onUnmounted, ref} from "vue";
+import {computed, onActivated, onMounted, onUnmounted, ref, watch} from "vue";
 import {useRouter} from "vue-router";
 import {useLocalStorage} from "@vueuse/core";
 import {ElMessage} from "element-plus";
@@ -1049,7 +1049,7 @@ const mikanUrlsCache = ref({}) // bgmId -> Mikan detail URL
 const groupsCache = ref({}) // `${sourceKey}_${bgmId}` -> groups
 const currentGroups = ref([])
 const activeGroupIndex = ref(0)
-const selectedRegexOption = ref('')
+const selectedRegexOption = ref(JSON.stringify([]))
 
 // 获取指定源已缓存的字幕组数量（用于 tab 徽章展示）
 const getDialogSourceGroupCount = (sourceKey) => {
@@ -1144,7 +1144,7 @@ const getAnimeProgress = (anime) => {
     }
   }
   const curr = best.currentEpisodeNumber ?? 0
-  const total = best.totalEpisodeNumber || '*'
+  const total = best.totalEpisodeNumber || anime.episodes || '*'
   return `${curr} / ${total}`
 }
 
@@ -1273,24 +1273,19 @@ const selectedGroup = computed(() => {
   return currentGroups.value[activeGroupIndex.value] || null
 })
 
-// 当前字幕组可用的过滤规则选项
+// 当前字幕组可用的过滤规则选项（默认“全部资源 (不过滤)”排在第一位）
 const matchedRegexOptions = computed(() => {
   if (!selectedGroup.value?.regexList) {
-    return []
+    return [{label: '全部资源 (不过滤)', value: JSON.stringify([])}]
   }
-  const list = [...selectedGroup.value.regexList]
-  const hasEmpty = list.some(itemGroup => !itemGroup || !itemGroup.length)
-  if (!hasEmpty) {
-    list.push([])
-  }
-  return list.map(itemGroup => {
-    if (!itemGroup || !itemGroup.length) {
-      return {label: '全部资源 (不过滤)', value: JSON.stringify([])}
-    }
+  const validList = selectedGroup.value.regexList.filter(itemGroup => itemGroup && itemGroup.length > 0)
+  const allOption = {label: '全部资源 (不过滤)', value: JSON.stringify([])}
+  const otherOptions = validList.map(itemGroup => {
     const label = itemGroup.map(it => it.label).join(' / ')
     const value = JSON.stringify(itemGroup.map(it => it.regex))
     return {label, value}
   })
+  return [allOption, ...otherOptions]
 })
 
 // 点击封面弹出更换封面弹窗 (需求2)
@@ -1482,6 +1477,9 @@ const handleUpdateTotalEpisode = async (force) => {
     ElMessage.success(res?.message || (force ? '已触发强制更新总集数' : '已触发更新总集数'))
     window.$reLoadList?.()
     await loadSubscribedList()
+    setTimeout(() => {
+      loadSubscribedList()
+    }, 1500)
   } catch (e) {
     ElMessage.error('更新总集数失败: ' + (e.message || e))
   } finally {
@@ -1606,6 +1604,7 @@ const normalizeAnimeItem = (item) => {
     airingAt: item.airingAt,
     premiereDate: item.premiereDate,
     scheduleStatus: item.scheduleStatus,
+    episodes: item.episodes || 0,
     raw: item
   }
 }
@@ -1830,6 +1829,7 @@ const openAnimeDialog = async (anime) => {
   selectedAnime.value = anime
   dialogVisible.value = true
   activeDialogSource.value = 'mikan' // 默认选择蜜柑 Mikan
+  selectedRegexOption.value = JSON.stringify([])
   await switchDialogSource('mikan')
 }
 
@@ -1837,7 +1837,7 @@ const openAnimeDialog = async (anime) => {
 const switchDialogSource = async (sourceKey) => {
   activeDialogSource.value = sourceKey
   activeGroupIndex.value = 0
-  selectedRegexOption.value = ''
+  selectedRegexOption.value = JSON.stringify([])
 
   if (!selectedAnime.value) return
 
@@ -1937,10 +1937,20 @@ const fetchSubgroupsForSource = async (sourceKey, anime) => {
 }
 
 const setupDefaultRegex = () => {
-  if (matchedRegexOptions.value.length) {
+  const allOption = matchedRegexOptions.value.find(opt => opt.value === JSON.stringify([]))
+  if (allOption) {
+    selectedRegexOption.value = allOption.value
+  } else if (matchedRegexOptions.value.length) {
     selectedRegexOption.value = matchedRegexOptions.value[0].value
+  } else {
+    selectedRegexOption.value = JSON.stringify([])
   }
 }
+
+// 切换选中的字幕组时，自动重置过滤规则为“全部资源 (不过滤)”
+watch(selectedGroup, () => {
+  setupDefaultRegex()
+})
 
 // 订阅选中的字幕组 -> 解析并进入 Step 2
 const subscribeCurrentGroup = async () => {
@@ -1969,7 +1979,8 @@ const subscribeCurrentGroup = async () => {
     bgmUrl,
     subgroup: subgroupName,
     match: matchArray.map(s => `{{${subgroupName}}}:${s}`),
-    title: selectedAnime.value?.title || ''
+    title: selectedAnime.value?.title || '',
+    totalEpisodeNumber: selectedAnime.value?.episodes || aniData?.episodes || 0
   }
 
   try {
@@ -2030,7 +2041,8 @@ const addToBatchCart = () => {
     subgroup: subgroupName,
     bgmUrl,
     rss: rssUrl,
-    match: matchArray.map(s => `{{${subgroupName}}}:${s}`)
+    match: matchArray.map(s => `{{${subgroupName}}}:${s}`),
+    episodes: anime.episodes || 0
   })
 
   ElMessage.success(`已加入待订阅清单：${anime.title} (${grp.label || subgroupName})`)
@@ -2084,7 +2096,8 @@ const executeBatchCartSubscribe = async () => {
         bgmUrl: item.bgmUrl,
         subgroup: item.subgroup,
         match: item.match || [],
-        title: item.animeTitle || ''
+        title: item.animeTitle || '',
+        totalEpisodeNumber: item.episodes || 0
       }
 
       const res = await http.rssToAni(aniPayload)

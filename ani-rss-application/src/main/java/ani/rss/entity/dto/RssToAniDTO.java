@@ -27,4 +27,8 @@ public class RssToAniDTO implements Serializable {
     @Schema(description = "是否启用订阅", defaultValue = "true")
     @McpToolParam(required = false)
     private Boolean enable;
+
+    @Schema(description = "总集数")
+    @McpToolParam(required = false)
+    private Integer totalEpisodeNumber;
 }

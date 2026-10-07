@@ -152,7 +152,7 @@
           <template #default="{row}">
             <el-tag type="warning">
               {{ row.currentEpisodeNumber }} /
-              {{ row.totalEpisodeNumber || '*' }}
+              {{ row.totalEpisodeNumber || row.episodes || '*' }}
             </el-tag>
           </template>
         </el-table-column>

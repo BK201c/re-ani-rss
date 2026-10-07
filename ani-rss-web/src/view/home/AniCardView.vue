@@ -49,7 +49,7 @@
             </el-tag>
             <el-tag type="warning">
               {{ item['currentEpisodeNumber'] }} /
-              {{ item['totalEpisodeNumber'] ? item['totalEpisodeNumber'] : '*' }}
+              {{ item['totalEpisodeNumber'] ? item['totalEpisodeNumber'] : (item['episodes'] ? item['episodes'] : '*') }}
             </el-tag>
             <el-tag type="danger" v-if="item.ova">
               ova
