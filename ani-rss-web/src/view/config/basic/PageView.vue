@@ -67,7 +67,9 @@
   <SettingsItem label="启动页">
     <el-select v-model="startupPage" class="width-150">
       <el-option label="RSS页" value="/subscriptions/add"/>
-      <el-option label="订阅页" value="/subscriptions"/>
+      <el-option label="下载页" value="/downloads"/>
+      <el-option label="日志页" value="/logs"/>
+      <el-option label="设置页" value="/settings"/>
     </el-select>
   </SettingsItem>
   <SettingsItem label="最大内容宽度">

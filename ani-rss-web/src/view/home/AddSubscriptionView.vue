@@ -2140,7 +2140,6 @@ const handleSaveConfiguredAni = (done) => {
         loadSubscribedList().then(() => {
           loadAuthorityData()
         })
-        router.push('/subscriptions')
       })
       .catch(e => {
         ElMessage.error(e.message || '保存订阅失败')
@@ -2152,11 +2151,7 @@ const handleSaveConfiguredAni = (done) => {
 
 // 返回导航
 const handleBack = () => {
-  if (step.value === 2) {
-    step.value = 1
-  } else {
-    router.push('/subscriptions')
-  }
+  step.value = 1
 }
 
 // 辅助方法

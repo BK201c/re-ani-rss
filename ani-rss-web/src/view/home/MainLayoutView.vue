@@ -16,12 +16,6 @@
           </el-icon>
           <span>RSS</span>
         </el-menu-item>
-        <el-menu-item index="/subscriptions">
-          <el-icon>
-            <Collection/>
-          </el-icon>
-          <span>订阅</span>
-        </el-menu-item>
         <el-menu-item index="/downloads">
           <el-icon>
             <Download/>
@@ -55,7 +49,7 @@
 <script setup>
 import {onMounted} from "vue";
 import {RouterView, useRoute} from "vue-router";
-import {Collection, Connection, Download, Setting, Tickets} from "@element-plus/icons-vue";
+import {Connection, Download, Setting, Tickets} from "@element-plus/icons-vue";
 import {initLayout} from "@/js/global.js";
 
 const route = useRoute()

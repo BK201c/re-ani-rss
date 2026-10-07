@@ -23,7 +23,7 @@ const routes = [
     },
     {
         path: '/subscriptions',
-        component: SubscriptionView
+        redirect: '/subscriptions/add'
     },
     {
         path: '/downloads',

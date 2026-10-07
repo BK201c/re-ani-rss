@@ -51,7 +51,7 @@ if (coverClickAction.value === 'playlist') {
  * 启动页
  */
 const startupPage = useLocalStorage('startup-page', '/subscriptions/add')
-if (startupPage.value === '/home') {
+if (startupPage.value === '/home' || startupPage.value === '/subscriptions') {
     startupPage.value = '/subscriptions/add'
 }
 
