@@ -1,5 +1,7 @@
 FROM eclipse-temurin:26-jre-alpine
 
+RUN apk add --no-cache su-exec tzdata
+
 COPY docker/run.sh /run.sh
 COPY docker/exec.sh /exec.sh
 COPY ani-rss-application/target/ani-rss.jar /usr/app/ani-rss.jar
