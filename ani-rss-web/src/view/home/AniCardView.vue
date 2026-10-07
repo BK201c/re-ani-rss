@@ -67,12 +67,6 @@
           </el-text>
         </div>
         <div class="list-card-actions">
-          <el-button text @click="emit('playlist', item)" bg v-if="showPlaylist">
-            <el-icon>
-              <Files/>
-            </el-icon>
-          </el-button>
-          <div class="list-card-spacer" v-if="showPlaylist"></div>
           <el-button bg text title="更换封面" @click="emit('cover', item)">
             <el-icon>
               <Picture/>
@@ -97,8 +91,8 @@
 </template>
 
 <script setup>
-import {coverClickAction, showLastDownloadTime, showPlaylist, showScore, toApiFile} from "@/js/global.js";
-import {Delete, Edit as EditIcon, Files, Picture} from "@element-plus/icons-vue";
+import {coverClickAction, showLastDownloadTime, showScore, toApiFile} from "@/js/global.js";
+import {Delete, Edit as EditIcon, Picture} from "@element-plus/icons-vue";
 
 let openBgmUrl = (it) => {
   if (it.bgmUrl?.length) {
@@ -116,11 +110,11 @@ let decodeURLComponentSafe = (str) => {
   return decodeURIComponent(str.replace('+', ' '));
 }
 
-const emit = defineEmits(['edit', 'playlist', 'cover', 'del', 'rate'])
+const emit = defineEmits(['edit', 'cover', 'del', 'rate'])
 let props = defineProps(["item"])
 
 const handleCoverClick = () => {
-  const action = ['edit', 'playlist', 'cover'].includes(coverClickAction.value)
+  const action = ['edit', 'cover'].includes(coverClickAction.value)
       ? coverClickAction.value
       : 'cover'
   emit(action, props.item)

@@ -1,6 +1,5 @@
 <template>
   <EditAniView ref="editAniRef"/>
-  <PlayListView ref="playListRef"/>
   <CoverView ref="coverRef"/>
   <DelAniView ref="delAniRef"/>
   <BgmRateView ref="bgmRateRef"/>
@@ -18,7 +17,6 @@
                     :is="viewComponent"
                     :item="item"
                     @edit="editAniRef?.show"
-                    @playlist="playListRef?.show"
                     @cover="coverRef?.show"
                     @del="delAniRef?.show"
                     @rate="bgmRateRef?.show"
@@ -34,7 +32,6 @@
                   :is="viewComponent"
                   :item="item"
                   @edit="editAniRef?.show"
-                  @playlist="playListRef?.show"
                   @cover="coverRef?.show"
                   @del="delAniRef?.show"
                   @rate="bgmRateRef?.show"
@@ -51,7 +48,6 @@
 <script setup>
 import {computed, onMounted, ref} from "vue";
 import EditAniView from "./EditAniView.vue";
-import PlayListView from "@/view/play/PlayListView.vue";
 import CoverView from "./CoverView.vue";
 import DelAniView from "./DelAniView.vue";
 import BgmRateView from "./BgmRateView.vue";
@@ -74,7 +70,6 @@ const emit = defineEmits(['loaded'])
 const editAniRef = ref()
 const delAniRef = ref()
 const coverRef = ref()
-const playListRef = ref()
 const bgmRateRef = ref()
 
 const weekList = ref([])

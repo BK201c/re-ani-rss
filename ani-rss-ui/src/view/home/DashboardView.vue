@@ -1,7 +1,6 @@
 <template>
   <div class="dashboard-page app-page-layout">
     <EditAniView ref="editAniRef"/>
-    <PlayListView ref="playListRef"/>
     <CoverView ref="coverRef"/>
     <DelAniView ref="delAniRef"/>
     <BgmRateView ref="bgmRateRef"/>
@@ -91,7 +90,6 @@
                   <AniCoverView
                       :item="ani"
                       @edit="editAniRef?.show"
-                      @playlist="playListRef?.show"
                       @cover="coverRef?.show"
                       @del="delAniRef?.show"
                       @rate="bgmRateRef?.show"/>
@@ -167,7 +165,6 @@ import {formatDate, fromNow} from "@/js/format.js";
 import * as http from "@/js/http.js";
 import AniCoverView from "@/view/home/AniCoverView.vue";
 import EditAniView from "@/view/home/EditAniView.vue";
-import PlayListView from "@/view/play/PlayListView.vue";
 import CoverView from "@/view/home/CoverView.vue";
 import DelAniView from "@/view/home/DelAniView.vue";
 import BgmRateView from "@/view/home/BgmRateView.vue";
@@ -186,7 +183,6 @@ const todayTrack = ref()
 const editAniRef = ref()
 const delAniRef = ref()
 const coverRef = ref()
-const playListRef = ref()
 const bgmRateRef = ref()
 const config = ref({
   procrastinatingDay: 14

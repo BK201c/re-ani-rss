@@ -14,6 +14,9 @@ export default defineConfig({
     base: './',
     server: {
         port: 37789,
+        watch: {
+            ignored: ['**/node/**', '**/dist/**']
+        },
         proxy: {
             '/api': {
                 target: serverHost ? serverHost : 'http://127.0.0.1:7789',
@@ -72,10 +75,6 @@ export default defineConfig({
                         {
                             name: 'element-icon',
                             test: /node_modules[\\/](@element-plus[\\/]icons-vue)/,
-                        },
-                        {
-                            name: 'artplayer',
-                            test: /node_modules[\\/](artplayer|artplayer-plugin-multiple-subtitles)/,
                         },
                         {
                             name: 'element-plus',

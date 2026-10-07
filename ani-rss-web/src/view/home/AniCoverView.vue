@@ -46,12 +46,6 @@
           </el-button>
           <template #dropdown>
             <el-dropdown-menu>
-              <el-dropdown-item v-if="showPlaylist" @click="emit('playlist', item)">
-                <el-icon>
-                  <Files/>
-                </el-icon>
-                播放列表
-              </el-dropdown-item>
               <el-dropdown-item @click="emit('cover', item)">
                 <el-icon>
                   <Picture/>
@@ -88,8 +82,8 @@
 
 <script setup>
 import {computed, ref} from "vue";
-import {Delete, Edit as EditIcon, Files, Fold, Picture, Star} from "@element-plus/icons-vue";
-import {coverClickAction, showLastDownloadTime, showPlaylist, showScore, toApiFile} from "@/js/global.js";
+import {Delete, Edit as EditIcon, Fold, Picture, Star} from "@element-plus/icons-vue";
+import {coverClickAction, showLastDownloadTime, showScore, toApiFile} from "@/js/global.js";
 import {fromNow} from "@/js/format.js";
 
 const actionsVisible = ref(false)
@@ -122,7 +116,7 @@ const updateText = computed(() => {
 })
 
 const handleCoverClick = () => {
-  const action = ['edit', 'playlist', 'cover'].includes(coverClickAction.value)
+  const action = ['edit', 'cover'].includes(coverClickAction.value)
       ? coverClickAction.value
       : 'cover'
   emit(action, props.item)
@@ -140,7 +134,7 @@ const openBgmUrl = it => {
   }
 }
 
-const emit = defineEmits(['edit', 'playlist', 'cover', 'del', 'rate'])
+const emit = defineEmits(['edit', 'cover', 'del', 'rate'])
 </script>
 
 <style scoped>

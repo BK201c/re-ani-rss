@@ -22,12 +22,8 @@
             <url>https://repo.maven.apache.org/maven2</url>
         </repository>
         <repository>
-            <id>ebml-reader</id>
-            <url>https://raw.githubusercontent.com/wushuo894/EBMLReader/mvn-repo</url>
-        </repository>
-        <repository>
-            <id>tmdb-api</id>
-            <url>https://raw.githubusercontent.com/wushuo894/tmdb-api/mvn-repo</url>
+            <id>local-libs</id>
+            <url>file://${maven.multiModuleProjectDirectory}/libs</url>
         </repository>
     </repositories>
 
@@ -63,10 +59,6 @@
         <dependency>
             <groupId>com.google.code.gson</groupId>
             <artifactId>gson</artifactId>
-        </dependency>
-        <dependency>
-            <groupId>ebml.reader</groupId>
-            <artifactId>ebml-reader</artifactId>
         </dependency>
         <dependency>
             <groupId>wushuo.tmdb.api</groupId>
