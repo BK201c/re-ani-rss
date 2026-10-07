@@ -6,11 +6,7 @@
 
     <!-- 统一页面头部 -->
     <PageHeaderView
-<<<<<<< HEAD
         title="RSS"
-=======
-        title="RSS源"
->>>>>>> 7a81efe0ece752914ae2beacf52f4d38fb83c8b3
         :subtitle="step === 1 ? `${currentSourceLabel} · 共 ${totalAnimeCount} 部番剧` : '第 2 步：确认与微调订阅配置'"
     >
       <template #actions>
@@ -1320,13 +1316,9 @@ const openExternal = (url) => {
 }
 
 onMounted(() => {
-<<<<<<< HEAD
   loadSubscribedList().then(() => {
     loadSourceData()
   })
-=======
-  loadSourceData()
->>>>>>> 7a81efe0ece752914ae2beacf52f4d38fb83c8b3
 })
 
 onActivated(() => {
@@ -1334,13 +1326,9 @@ onActivated(() => {
   if (step.value === 2) {
     step.value = 1
   }
-<<<<<<< HEAD
   loadSubscribedList().then(() => {
     loadSourceData()
   })
-=======
-  loadSourceData()
->>>>>>> 7a81efe0ece752914ae2beacf52f4d38fb83c8b3
 })
 </script>
 
