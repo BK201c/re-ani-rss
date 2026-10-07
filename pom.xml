@@ -28,6 +28,21 @@
         <module>ani-rss-application</module>
     </modules>
 
+    <repositories>
+        <repository>
+            <id>central</id>
+            <url>https://repo.maven.apache.org/maven2</url>
+        </repository>
+        <repository>
+            <id>ebml-reader</id>
+            <url>https://raw.githubusercontent.com/wushuo894/EBMLReader/mvn-repo</url>
+        </repository>
+        <repository>
+            <id>tmdb-api</id>
+            <url>https://raw.githubusercontent.com/wushuo894/tmdb-api/mvn-repo</url>
+        </repository>
+    </repositories>
+
     <parent>
         <groupId>org.springframework.boot</groupId>
         <artifactId>spring-boot-starter-parent</artifactId>
@@ -55,12 +70,12 @@
             <dependency>
                 <groupId>wushuo.tmdb.api</groupId>
                 <artifactId>tmdb-api</artifactId>
-                <version>1.0.9</version>
+                <version>1.0.10</version>
             </dependency>
             <dependency>
                 <groupId>ebml.reader</groupId>
                 <artifactId>ebml-reader</artifactId>
-                <version>1.0.0</version>
+                <version>1.0.1</version>
             </dependency>
             <dependency>
                 <groupId>org.eclipse.angus</groupId>
