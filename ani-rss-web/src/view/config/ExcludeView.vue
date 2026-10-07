@@ -1,5 +1,5 @@
 <template>
-  <el-dialog title="添加正则" v-if="add" v-model:model-value="add" center align-center width="300">
+  <el-dialog title="添加正则" v-if="add" v-model:model-value="add" center align-center width="300" append-to-body>
     <div>
       <SettingsItem label="字幕组">
         <el-input placeholder="留空匹配所有字幕组" v-model="subgroup"></el-input>
@@ -14,10 +14,10 @@
     </div>
   </el-dialog>
   <div class="full-width">
-    <section id="exclude-rules" class="settings-section">
-      <div class="settings-section-heading">
-        <h3>全局排除规则</h3>
-        <p class="settings-section-desc">统一排除不需要的字幕组、语言画质标签或特定关键字</p>
+    <section :id="props.sectionId || undefined" class="settings-section">
+      <div v-if="props.title || props.desc" class="settings-section-heading">
+        <h3 v-if="props.title">{{ props.title }}</h3>
+        <p v-if="props.desc" class="settings-section-desc">{{ props.desc }}</p>
       </div>
       <div class="gap-2">
       <el-tag v-if="!props.exclude.length"
@@ -130,7 +130,19 @@ let addExclude = () => {
 let props = defineProps({
   exclude: Array,
   importExclude: Boolean,
-  showText: Boolean
+  showText: Boolean,
+  title: {
+    type: String,
+    default: '排除规则'
+  },
+  desc: {
+    type: String,
+    default: '统一排除不需要的字幕组、语言画质标签或特定关键字'
+  },
+  sectionId: {
+    type: String,
+    default: ''
+  }
 })
 </script>
 

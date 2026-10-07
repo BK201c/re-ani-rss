@@ -47,6 +47,9 @@
               <ExcludeView
                   v-else-if="activeName === 'exclude'"
                   v-model:exclude="config.exclude"
+                  title="全局排除规则"
+                  desc="统一排除不需要的字幕组与格式"
+                  section-id="exclude-rules"
                   :show-text="true"/>
               <ProxyView v-else-if="activeName === 'proxy'" v-model:config="config"/>
               <Security v-else-if="activeName === 'security'" :config="config"/>

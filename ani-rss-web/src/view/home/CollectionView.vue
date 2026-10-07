@@ -81,10 +81,22 @@
                 </div>
               </el-form-item>
               <el-form-item label="匹配">
-                <ExcludeView v-model:exclude="data.ani.match" :import-exclude="false"/>
+                <ExcludeView
+                    v-model:exclude="data.ani.match"
+                    :import-exclude="false"
+                    title="匹配规则"
+                    desc="指定需要匹配的字幕组、语言画质标签或特定关键字（留空匹配全部）"
+                    section-id="collection-match-rules"
+                />
               </el-form-item>
               <el-form-item label="排除">
-                <ExcludeView v-model:exclude="data.ani.exclude" :import-exclude="true"/>
+                <ExcludeView
+                    v-model:exclude="data.ani.exclude"
+                    :import-exclude="true"
+                    title="排除规则"
+                    desc="统一排除不需要的字幕组、语言画质标签或特定关键字"
+                    section-id="collection-exclude-rules"
+                />
               </el-form-item>
               <el-form-item label="全局排除">
                 <el-switch v-model:model-value="data.ani['globalExclude']"/>

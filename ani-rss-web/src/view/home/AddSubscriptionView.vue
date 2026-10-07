@@ -1072,6 +1072,7 @@ const configuredAni = ref(JSON.parse(JSON.stringify(aniData)))
 
 // 已订阅条目列表缓存
 const subscribedList = ref([])
+const isSubscribedListLoaded = ref(false)
 
 // 查找与特定番剧匹配的全部已订阅记录
 const findMatchedSubscriptions = (anime) => {
@@ -1154,7 +1155,9 @@ const isSubDisabled = (s) => s?.enable === false || s?.enabled === false
 const getAnimeStatusText = (anime) => {
   if (!anime?.exists) return '未订阅'
   const matched = findMatchedSubscriptions(anime)
-  if (!matched.length) return '已订阅'
+  if (!matched.length) {
+    return isSubscribedListLoaded.value ? '未订阅' : '已订阅'
+  }
   const allDisabled = matched.every(isSubDisabled)
   return allDisabled ? '已禁用' : '已启用'
 }
@@ -1163,7 +1166,9 @@ const getAnimeStatusText = (anime) => {
 const getAnimeTagType = (anime) => {
   if (!anime?.exists) return 'info'
   const matched = findMatchedSubscriptions(anime)
-  if (!matched.length) return 'success'
+  if (!matched.length) {
+    return isSubscribedListLoaded.value ? 'info' : 'success'
+  }
   const allDisabled = matched.every(isSubDisabled)
   return allDisabled ? 'info' : 'success'
 }
@@ -1171,17 +1176,26 @@ const getAnimeTagType = (anime) => {
 // 刷新当前所有已渲染番剧卡片的已订阅字幕组和状态
 const updateSubscribedInfoForAnimeList = () => {
   for (const item of animeList.value) {
-    const subs = getAnimeSubscribedSubgroups(item)
-    item.subscribedSubgroups = subs
-    item.exists = Boolean(item.raw?.exists) || subs.length > 0
+    const matched = findMatchedSubscriptions(item)
+    const subs = matched.map(it => it.subgroup).filter(Boolean)
+    item.subscribedSubgroups = Array.from(new Set(subs))
+    item.exists = isSubscribedListLoaded.value ? (matched.length > 0) : (matched.length > 0 || Boolean(item.raw?.exists))
+    if (item.raw) {
+      item.raw.exists = item.exists
+    }
   }
   for (const week of rawWeeksData.value) {
     for (const item of (week.items || [])) {
-      const subs = getAnimeSubscribedSubgroups(item)
-      item.subscribedSubgroups = subs
-      item.exists = Boolean(item.raw?.exists) || subs.length > 0
+      const matched = findMatchedSubscriptions(item)
+      const subs = matched.map(it => it.subgroup).filter(Boolean)
+      item.subscribedSubgroups = Array.from(new Set(subs))
+      item.exists = isSubscribedListLoaded.value ? (matched.length > 0) : (matched.length > 0 || Boolean(item.raw?.exists))
+      if (item.raw) {
+        item.raw.exists = item.exists
+      }
     }
   }
+  syncCurrentSeasonCache()
 }
 
 // 加载系统中全部已订阅条目
@@ -1196,6 +1210,7 @@ const loadSubscribedList = async () => {
       }
     }
     subscribedList.value = all
+    isSubscribedListLoaded.value = true
     updateSubscribedInfoForAnimeList()
   } catch (e) {
     console.error('加载订阅列表失败:', e)
@@ -1589,9 +1604,9 @@ const normalizeAnimeItem = (item) => {
   }
 
   const cover = item.cover || ''
-  const score = item.rating || 0
-  const subs = getAnimeSubscribedSubgroups({ rawId: bgmId, bgmId, title, raw: item })
-  const exists = Boolean(item.exists) || subs.length > 0
+  const matched = findMatchedSubscriptions({ rawId: bgmId, bgmId, title, raw: item })
+  const subs = matched.map(it => it.subgroup).filter(Boolean)
+  const exists = isSubscribedListLoaded.value ? (matched.length > 0) : (matched.length > 0 || Boolean(item.exists))
 
   return {
     id: bgmId,
@@ -1602,7 +1617,7 @@ const normalizeAnimeItem = (item) => {
     cover,
     score,
     exists,
-    subscribedSubgroups: subs,
+    subscribedSubgroups: Array.from(new Set(subs)),
     airingAt: item.airingAt,
     premiereDate: item.premiereDate,
     scheduleStatus: item.scheduleStatus,
@@ -1726,6 +1741,39 @@ const setSeasonCache = (seasonKey, data) => {
   }
 }
 
+// 同步当前季度本地缓存中的订阅存在状态
+const syncCurrentSeasonCache = () => {
+  try {
+    const seasonKey = selectedSeason.value || ''
+    const currentCache = getSeasonCache(seasonKey)
+    if (currentCache?.data?.byWeekday) {
+      let changed = false
+      for (const week of currentCache.data.byWeekday) {
+        for (const anime of (week.animes || [])) {
+          const bgmId = String(anime.bgmId || '')
+          let title = ''
+          if (typeof anime.title === 'object' && anime.title !== null) {
+            title = anime.title.chinese || anime.title.primary || ''
+          } else {
+            title = anime.title || ''
+          }
+          const matched = findMatchedSubscriptions({ rawId: bgmId, bgmId, title, raw: anime })
+          const newExists = matched.length > 0
+          if (anime.exists !== newExists) {
+            anime.exists = newExists
+            changed = true
+          }
+        }
+      }
+      if (changed) {
+        setSeasonCache(seasonKey, currentCache.data)
+      }
+    }
+  } catch (e) {
+    console.warn('同步本地缓存订阅状态失败:', e)
+  }
+}
+
 const applySeasonData = (data) => {
   const { requestedSeason, availableSeasons, byWeekday } = data || {}
 
@@ -1754,7 +1802,7 @@ const loadAuthorityData = async (keyword = '', seasonParam = null, forceRefresh 
   selectedAnime.value = null
   currentGroups.value = []
 
-  if (!subscribedList.value.length) {
+  if (!isSubscribedListLoaded.value) {
     await loadSubscribedList()
   }
 
