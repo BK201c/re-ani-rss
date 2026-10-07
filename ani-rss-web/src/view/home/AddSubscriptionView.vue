@@ -513,36 +513,36 @@
           destroy-on-close
           class="anime-group-dialog"
       >
-        <div v-if="selectedAnime" class="group-dialog-body" v-loading="groupsLoading">
-          <!-- 弹窗内部番剧横幅卡片 -->
-          <div class="dialog-anime-banner">
+        <div v-if="selectedAnime" class="group-dialog-body">
+          <!-- 1. 紧凑番剧头部信息 (去除多层卡片框与厚重边距) -->
+          <div class="anime-dialog-header">
             <img
                 :src="proxyImage(selectedAnime.cover)"
                 :alt="selectedAnime.title"
-                class="dialog-anime-cover"
+                class="anime-header-cover"
             />
-            <div class="dialog-anime-info">
-              <div class="dialog-anime-title-row">
-                <h4 class="dialog-anime-title" :title="selectedAnime.title">{{ selectedAnime.title }}</h4>
+            <div class="anime-header-detail">
+              <div class="anime-header-title-row">
+                <span class="anime-header-title" :title="selectedAnime.title">{{ selectedAnime.title }}</span>
                 <el-tag v-if="selectedAnime.exists" type="success" size="small">已在订阅中</el-tag>
               </div>
-              <div class="dialog-anime-meta">
-                <span v-if="selectedAnime.score > 0" class="dialog-score">
+              <div class="anime-header-meta-row">
+                <span v-if="selectedAnime.score > 0" class="anime-header-score">
                   Bangumi 评分: <strong>{{ Number(selectedAnime.score).toFixed(1) }}</strong>
                 </span>
-                <span v-if="formatAirTime(selectedAnime)" class="dialog-air-time">
+                <span v-if="formatAirTime(selectedAnime)" class="anime-header-air-time">
                   <el-tooltip
                       :content="formatAirTime(selectedAnime).tooltip"
                       placement="top"
                       raw-content
                   >
-                    <span class="dialog-air-time-badge">
+                    <span class="anime-header-time-pill">
                       <el-icon><Timer /></el-icon>
                       播出: {{ formatAirTime(selectedAnime).display }} {{ formatAirTime(selectedAnime).hasTime ? '(北京)' : '' }}
                     </span>
                   </el-tooltip>
                 </span>
-                <div class="dialog-external-links">
+                <div class="anime-header-links">
                   <el-button
                       v-if="selectedAnime.bgmId"
                       icon="Link"
@@ -550,7 +550,7 @@
                       text
                       bg
                       @click="openExternal('https://bgm.tv/subject/' + selectedAnime.bgmId)">
-                    在 Bangumi 查看
+                    Bangumi
                   </el-button>
                   <el-button
                       v-if="selectedAnime.bgmId"
@@ -559,7 +559,7 @@
                       text
                       bg
                       @click="openExternal('https://anibt.net/anime/' + selectedAnime.bgmId)">
-                    在 AniBT 查看
+                    AniBT
                   </el-button>
                   <el-button
                       v-if="activeDialogSource === 'mikan' && mikanUrlsCache[selectedAnime.bgmId]"
@@ -568,211 +568,195 @@
                       text
                       bg
                       @click="openExternal(mikanUrlsCache[selectedAnime.bgmId])">
-                    在 Mikan 查看
+                    Mikan
                   </el-button>
                 </div>
               </div>
             </div>
           </div>
 
-          <!-- 弹窗内部下载数据源切换栏 (蜜柑 Mikan / AniBT / 动漫花园) -->
-          <div class="dialog-source-tabs-bar">
-            <div class="dialog-source-tabs">
+          <!-- 2. 数据源切换栏 (扁平 Segmented 控制条，去除厚框) -->
+          <div class="anime-dialog-sources-bar">
+            <div class="source-segmented-group">
               <button
                   v-for="src in dialogSourceList"
                   :key="src.key"
                   type="button"
-                  class="dialog-source-tab-btn"
+                  class="source-segmented-btn"
                   :class="{ 'is-active': activeDialogSource === src.key }"
                   @click="switchDialogSource(src.key)">
-                <img v-if="src.icon" :src="src.icon" class="dialog-source-tab-icon" :alt="src.label" />
-                <span class="dialog-source-tab-label">{{ src.label }}</span>
-                <span v-if="getDialogSourceGroupCount(src.key) !== null" class="dialog-source-tab-count">
+                <img v-if="src.icon" :src="src.icon" class="source-btn-icon" :alt="src.label" />
+                <span>{{ src.label }}</span>
+                <span v-if="getDialogSourceGroupCount(src.key) !== null" class="source-btn-count">
                   ({{ getDialogSourceGroupCount(src.key) }})
                 </span>
               </button>
             </div>
           </div>
 
-          <!-- 字幕组与资源区域 -->
-          <div class="dialog-groups-main">
-            <div class="section-title-bar">
-              <div class="title-with-count">
-                <h4>{{ currentDialogSourceLabel }} 字幕组列表</h4>
-                <span class="sub-count-tag" v-if="currentGroups.length">
-                  共 {{ currentGroups.length }} 个字幕组
-                </span>
+          <!-- 3. 字幕组与资源区域 (局部 loading，保留头部与数据源清晰可见) -->
+          <div class="dialog-groups-area" v-loading="groupsLoading">
+            <!-- 字幕组列表水平滚动药丸 (紧凑胶囊流，去除大边框长条盒子) -->
+            <div v-if="currentGroups.length" class="subgroups-flow-wrapper">
+            <el-scrollbar class="subgroups-flow-scroll">
+              <div class="subgroups-pills-row">
+                <button
+                    v-for="(grp, idx) in currentGroups"
+                    :key="idx"
+                    type="button"
+                    class="subgroup-capsule"
+                    :class="{
+                      'is-active': activeGroupIndex === idx,
+                      'is-subscribed': isGroupSubscribed(grp)
+                    }"
+                    @click="activeGroupIndex = idx">
+                  <el-icon v-if="isGroupSubscribed(grp)" class="subgroup-check-icon">
+                    <Check/>
+                  </el-icon>
+                  <span class="subgroup-name">{{ grp.label }}</span>
+                  <span v-if="grp.updateDay" class="subgroup-day">{{ grp.updateDay }}</span>
+                </button>
               </div>
-            </div>
+            </el-scrollbar>
+          </div>
 
-            <!-- 字幕组水平标签栏 -->
-            <div v-if="currentGroups.length" class="subgroups-pills-bar">
-              <el-scrollbar class="subgroup-scroll">
-                <div class="subgroups-pills-flow">
-                  <button
-                      v-for="(grp, idx) in currentGroups"
-                      :key="idx"
-                      type="button"
-                      class="subgroup-pill-btn"
-                      :class="{
-                        'is-active': activeGroupIndex === idx,
-                        'is-subscribed': isGroupSubscribed(grp)
-                      }"
-                      @click="activeGroupIndex = idx">
-                    <span class="subgroup-name">
-                      <el-icon v-if="isGroupSubscribed(grp)" class="subgroup-check-icon">
-                        <Check/>
-                      </el-icon>
-                      {{ grp.label }}
-                    </span>
-                    <span v-if="grp.updateDay" class="subgroup-day">
-                      {{ grp.updateDay }}
-                    </span>
-                  </button>
-                </div>
-              </el-scrollbar>
-            </div>
-
-            <!-- 当前选中字幕组详情与一键订阅 -->
-            <div v-if="selectedGroup" class="selected-group-card">
-              <div class="selected-group-header">
-                <div class="group-header-left">
-                  <div class="group-title-status-row">
-                    <h5 class="current-group-title">{{ selectedGroup.label }}</h5>
-                    <el-tag
-                        v-if="isGroupSubscribed(selectedGroup)"
-                        type="success"
-                        size="small"
-                        effect="plain"
-                        class="group-subscribed-tag">
-                      <el-icon><Check/></el-icon>
-                      已订阅此字幕组
-                    </el-tag>
-                  </div>
-                  <div v-if="selectedGroup.tags && selectedGroup.tags.length" class="group-tags">
-                    <el-tag
-                        v-for="tag in selectedGroup.tags"
-                        :key="tag"
-                        size="small"
-                        effect="plain"
-                        class="feature-tag">
-                      {{ tag }}
-                    </el-tag>
-                  </div>
-                </div>
-
-                <!-- 一键订阅核心操作 -->
-                <div class="group-header-right">
-                  <el-select
-                      v-if="matchedRegexOptions.length > 1"
-                      v-model="selectedRegexOption"
-                      class="match-regex-select"
-                      size="default"
-                      placeholder="选择画质规则">
-                    <el-option
-                        v-for="(opt, oi) in matchedRegexOptions"
-                        :key="oi"
-                        :label="opt.label"
-                        :value="opt.value"
-                    />
-                  </el-select>
-
-                  <el-button
-                      type="warning"
-                      plain
-                      size="default"
-                      icon="FolderAdd"
-                      class="add-cart-btn"
-                      @click="addToBatchCart">
-                    加入待订阅
-                  </el-button>
-
-                  <el-button
-                      type="primary"
-                      size="default"
-                      icon="Plus"
-                      class="quick-subscribe-btn"
-                      :loading="subscribingLoading"
-                      @click="subscribeCurrentGroup">
-                    订阅此字幕组
-                  </el-button>
+          <!-- 4. 选中字幕组控制栏与种子列表 (一体化主面板，消灭双重卡片嵌套) -->
+          <div v-if="selectedGroup" class="selected-subgroup-panel">
+            <div class="subgroup-action-toolbar">
+              <div class="subgroup-toolbar-left">
+                <span class="subgroup-curr-title">{{ selectedGroup.label }}</span>
+                <el-tag
+                    v-if="isGroupSubscribed(selectedGroup)"
+                    type="success"
+                    size="small"
+                    effect="plain"
+                    class="group-subscribed-tag">
+                  <el-icon><Check/></el-icon> 已订阅
+                </el-tag>
+                <div v-if="selectedGroup.tags && selectedGroup.tags.length" class="subgroup-tags-inline">
+                  <el-tag
+                      v-for="tag in selectedGroup.tags"
+                      :key="tag"
+                      size="small"
+                      effect="plain"
+                      class="feature-tag">
+                    {{ tag }}
+                  </el-tag>
                 </div>
               </div>
 
-              <!-- 种子资源列表 -->
-              <div class="torrents-stream">
-                <div class="torrents-header">
-                  <span class="torrents-title">最新发布种子 ({{ selectedGroup.items.length }})</span>
-                </div>
-                <div v-if="selectedGroup.items.length" class="torrents-list-wrap">
-                  <el-scrollbar class="torrents-scroll">
-                    <div class="torrents-list">
-                      <div
-                          v-for="(t, ti) in selectedGroup.items"
-                          :key="ti"
-                          class="torrent-item-row">
-                        <div class="torrent-main">
-                          <span class="torrent-name" :title="t.title">{{ t.title }}</span>
-                          <div class="torrent-meta">
-                            <span class="meta-item">{{ t.size }}</span>
-                            <span class="meta-dot">·</span>
-                            <span class="meta-item">{{ t.date }}</span>
-                          </div>
-                        </div>
-                        <div class="torrent-actions">
-                          <el-button
-                              v-if="t.magnet"
-                              icon="CopyDocument"
-                              size="small"
-                              text
-                              bg
-                              title="复制磁力链接"
-                              @click="copyText(t.magnet)"
-                          />
-                          <el-button
-                              v-if="t.torrent"
-                              icon="Download"
-                              size="small"
-                              text
-                              bg
-                              title="下载种子文件"
-                              @click="openExternal(t.torrent)"
-                          />
-                          <el-button
-                              size="small"
-                              text
-                              type="primary"
-                              bg
-                              icon="Check"
-                              @click="subscribeCurrentGroup">
-                            订阅
-                          </el-button>
+              <div class="subgroup-toolbar-right">
+                <el-select
+                    v-if="matchedRegexOptions.length > 1"
+                    v-model="selectedRegexOption"
+                    class="match-regex-select"
+                    size="small"
+                    placeholder="选择画质规则">
+                  <el-option
+                      v-for="(opt, oi) in matchedRegexOptions"
+                      :key="oi"
+                      :label="opt.label"
+                      :value="opt.value"
+                  />
+                </el-select>
+
+                <el-button
+                    type="warning"
+                    plain
+                    size="small"
+                    icon="FolderAdd"
+                    class="add-cart-btn"
+                    @click="addToBatchCart">
+                  加入待订阅
+                </el-button>
+
+                <el-button
+                    type="primary"
+                    size="small"
+                    icon="Plus"
+                    class="quick-subscribe-btn"
+                    :loading="subscribingLoading"
+                    @click="subscribeCurrentGroup">
+                  订阅此字幕组
+                </el-button>
+              </div>
+            </div>
+
+            <!-- 种子资源列表 (扁平极简列表，无小卡片框嵌套) -->
+            <div class="subgroup-torrents-area">
+              <div class="torrents-area-header">
+                <span class="torrents-count-hint">最新发布种子 ({{ selectedGroup.items.length }})</span>
+              </div>
+              <div v-if="selectedGroup.items.length" class="torrents-list-container">
+                <el-scrollbar class="torrents-scroll">
+                  <div class="torrents-flat-list">
+                    <div
+                        v-for="(t, ti) in selectedGroup.items"
+                        :key="ti"
+                        class="torrent-flat-item">
+                      <div class="torrent-flat-info">
+                        <span class="torrent-flat-title" :title="t.title">{{ t.title }}</span>
+                        <div class="torrent-flat-meta">
+                          <span>{{ t.size }}</span>
+                          <span class="meta-dot">·</span>
+                          <span>{{ t.date }}</span>
                         </div>
                       </div>
+                      <div class="torrent-flat-actions">
+                        <el-button
+                            v-if="t.magnet"
+                            icon="CopyDocument"
+                            size="small"
+                            text
+                            bg
+                            title="复制磁力链接"
+                            @click="copyText(t.magnet)"
+                        />
+                        <el-button
+                            v-if="t.torrent"
+                            icon="Download"
+                            size="small"
+                            text
+                            bg
+                            title="下载种子文件"
+                            @click="openExternal(t.torrent)"
+                        />
+                        <el-button
+                            size="small"
+                            text
+                            type="primary"
+                            bg
+                            icon="Check"
+                            @click="subscribeCurrentGroup">
+                          订阅
+                        </el-button>
+                      </div>
                     </div>
-                  </el-scrollbar>
-                </div>
-                <el-empty v-else description="该字幕组暂无发布条目" :image-size="60"/>
+                  </div>
+                </el-scrollbar>
               </div>
+              <el-empty v-else description="该字幕组暂无发布条目" :image-size="60"/>
             </div>
+          </div>
 
-            <el-empty
-                v-else-if="!groupsLoading"
-                :description="`${currentDialogSourceLabel} 暂未收录该番剧的字幕组资源，可切换上方其他站点`"
-                class="empty-groups"
-            >
-              <template #extra>
-                <div class="empty-switch-hints">
-                  <el-button
-                      v-for="s in dialogSourceList.filter(item => item.key !== activeDialogSource)"
-                      :key="s.key"
-                      size="small"
-                      @click="switchDialogSource(s.key)">
-                    切换到 {{ s.label }}
-                  </el-button>
-                </div>
-              </template>
-            </el-empty>
+          <!-- 空字幕组状态 -->
+          <el-empty
+              v-else-if="!groupsLoading"
+              :description="`${currentDialogSourceLabel} 暂未收录该番剧的字幕组资源，可切换上方其他站点`"
+              class="empty-groups"
+          >
+            <template #extra>
+              <div class="empty-switch-hints">
+                <el-button
+                    v-for="s in dialogSourceList.filter(item => item.key !== activeDialogSource)"
+                    :key="s.key"
+                    size="small"
+                    @click="switchDialogSource(s.key)">
+                  切换到 {{ s.label }}
+                </el-button>
+              </div>
+            </template>
+          </el-empty>
           </div>
         </div>
       </el-dialog>
@@ -2312,34 +2296,33 @@ onActivated(() => {
 .group-dialog-body {
   display: flex;
   flex-direction: column;
-  gap: 12px;
-  height: 590px;
-  min-height: 590px;
+  gap: 10px;
+  height: 560px;
+  min-height: 560px;
   box-sizing: border-box;
   overflow: hidden;
 }
 
-.dialog-anime-banner {
+/* 1. 紧凑番剧头部信息 (去除多层卡片框与厚重边距) */
+.anime-dialog-header {
   flex-shrink: 0;
   display: flex;
-  gap: 14px;
-  padding: 12px 14px;
-  border-radius: 10px;
-  background: var(--el-bg-color);
-  border: 1px solid var(--el-border-color-lighter);
+  gap: 12px;
+  padding: 2px 2px 8px 2px;
+  border-bottom: 1px solid var(--el-border-color-lighter);
   align-items: center;
 }
 
-.dialog-anime-cover {
-  width: 60px;
-  height: 84px;
+.anime-header-cover {
+  width: 44px;
+  height: 60px;
   border-radius: 6px;
   object-fit: cover;
   flex-shrink: 0;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.08);
 }
 
-.dialog-anime-info {
+.anime-header-detail {
   flex: 1;
   min-width: 0;
   display: flex;
@@ -2347,94 +2330,85 @@ onActivated(() => {
   gap: 4px;
 }
 
-.dialog-anime-title-row {
+.anime-header-title-row {
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: 8px;
 }
 
-.dialog-anime-title {
-  margin: 0;
-  font-size: 15px;
+.anime-header-title {
+  font-size: 14px;
   font-weight: 700;
   color: var(--el-text-color-primary);
-  line-height: 1.3;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
-.dialog-anime-meta {
+.anime-header-meta-row {
   display: flex;
   align-items: center;
-  justify-content: space-between;
   gap: 10px;
   flex-wrap: wrap;
 }
 
-.dialog-score {
+.anime-header-score {
   font-size: 12px;
   color: var(--el-text-color-secondary);
 }
 
-.dialog-score strong {
+.anime-header-score strong {
   color: #fb7299;
   font-size: 13px;
 }
 
-.dialog-air-time {
+.anime-header-air-time {
   display: inline-flex;
   align-items: center;
 }
 
-.dialog-air-time-badge {
+.anime-header-time-pill {
   display: inline-flex;
   align-items: center;
-  gap: 5px;
-  padding: 2px 8px;
-  border-radius: 6px;
-  background: var(--el-fill-color);
-  border: 1px solid var(--el-border-color-lighter);
-  font-size: 12px;
-  color: var(--el-text-color-regular);
-  cursor: default;
-  transition: all 0.2s;
-}
-
-.dialog-air-time-badge:hover {
-  border-color: var(--el-color-primary-light-5);
-  color: var(--el-color-primary);
-}
-
-.dialog-external-links {
-  display: flex;
-  gap: 8px;
-}
-
-/* 弹窗内数据源切换 Tabs */
-.dialog-source-tabs-bar {
-  flex-shrink: 0;
-  display: flex;
+  gap: 4px;
+  padding: 1px 6px;
+  border-radius: 4px;
   background: var(--el-fill-color-light);
-  padding: 4px;
-  border-radius: 10px;
-  border: 1px solid var(--el-border-color-lighter);
+  font-size: 11px;
+  color: var(--el-text-color-regular);
 }
 
-.dialog-source-tabs {
+.anime-header-links {
+  display: flex;
+  gap: 6px;
+  margin-left: auto;
+}
+
+/* 2. 数据源切换栏 (扁平 Segmented 控制条，去除厚框) */
+.anime-dialog-sources-bar {
+  flex-shrink: 0;
+}
+
+.source-segmented-group {
   display: flex;
   gap: 4px;
-  width: 100%;
+  background: var(--el-fill-color-light);
+  padding: 3px;
+  border-radius: 8px;
+  border: 1px solid var(--el-border-color-extra-light);
 }
 
-.dialog-source-tab-btn {
+.source-segmented-btn {
   flex: 1;
   display: flex;
   align-items: center;
   justify-content: center;
-  gap: 8px;
-  padding: 8px 14px;
+  gap: 6px;
+  padding: 6px 12px;
   border: none;
   background: transparent;
-  border-radius: 8px;
+  border-radius: 6px;
   font-size: 13px;
   font-weight: 500;
   color: var(--el-text-color-regular);
@@ -2442,201 +2416,193 @@ onActivated(() => {
   transition: all 0.2s ease;
 }
 
-.dialog-source-tab-btn:hover {
+.source-segmented-btn:hover {
   background: var(--el-fill-color);
   color: var(--el-text-color-primary);
 }
 
-.dialog-source-tab-btn.is-active {
+.source-segmented-btn.is-active {
   background: var(--el-bg-color);
   color: var(--el-color-primary);
   font-weight: 600;
-  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.06);
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.08);
 }
 
-.dialog-source-tab-icon {
-  width: 18px;
-  height: 18px;
-  border-radius: 4px;
+.source-btn-icon {
+  width: 16px;
+  height: 16px;
+  border-radius: 3px;
   object-fit: contain;
 }
 
-.dialog-source-tab-label {
-  line-height: 1;
-}
-
-.dialog-source-tab-count {
+.source-btn-count {
   font-size: 11px;
-  opacity: 0.8;
+  opacity: 0.85;
 }
 
-.empty-switch-hints {
-  display: flex;
-  gap: 8px;
-  margin-top: 10px;
-}
-
-.dialog-groups-main {
+/* 3. 字幕组与资源区域 (局部 loading 与统一柔和遮罩) */
+.dialog-groups-area {
   flex: 1;
   min-height: 0;
   display: flex;
   flex-direction: column;
   gap: 10px;
-  overflow: hidden;
+  position: relative;
 }
 
-.section-title-bar {
+.anime-group-dialog :deep(.el-loading-mask) {
+  background-color: color-mix(in srgb, var(--el-bg-color) 70%, transparent);
+  backdrop-filter: blur(4px);
+  border-radius: 8px;
+}
+
+.subgroups-flow-wrapper {
   flex-shrink: 0;
 }
 
-.subgroups-pills-bar {
-  flex-shrink: 0;
-  background: var(--el-bg-color);
-  padding: 6px 8px;
-  border-radius: 10px;
-  border: 1px solid var(--el-border-color-lighter);
+.subgroups-flow-scroll {
+  width: 100%;
 }
 
-.subgroups-pills-flow {
+.subgroups-pills-row {
   display: flex;
   gap: 6px;
   align-items: center;
+  padding: 2px 0;
 }
 
-.subgroup-pill-btn {
-  display: flex;
-  flex-direction: column;
-  align-items: flex-start;
-  padding: 6px 12px;
+.subgroup-capsule {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 10px;
   border: 1px solid var(--el-border-color-lighter);
   background: var(--el-fill-color-light);
   border-radius: 6px;
   cursor: pointer;
   white-space: nowrap;
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--el-text-color-primary);
   transition: all 0.15s ease;
 }
 
-.subgroup-pill-btn:hover {
+.subgroup-capsule:hover {
   background: var(--el-fill-color);
+  border-color: var(--el-border-color);
 }
 
-.subgroup-pill-btn.is-active {
+.subgroup-capsule.is-active {
   background: var(--el-color-primary-light-9);
   border-color: var(--el-color-primary);
   color: var(--el-color-primary);
+  font-weight: 600;
 }
 
-.subgroup-pill-btn.is-subscribed {
+.subgroup-capsule.is-subscribed {
   border-color: var(--el-color-success-light-5);
   background: var(--el-color-success-light-9);
-}
-
-.subgroup-pill-btn.is-subscribed .subgroup-name {
   color: var(--el-color-success-dark-2);
 }
 
-.subgroup-pill-btn.is-subscribed.is-active {
+.subgroup-capsule.is-subscribed.is-active {
   background: var(--el-color-primary-light-9);
   border-color: var(--el-color-primary);
-}
-
-.subgroup-pill-btn.is-subscribed.is-active .subgroup-name {
   color: var(--el-color-primary);
 }
 
 .subgroup-check-icon {
-  margin-right: 4px;
   color: var(--el-color-success);
-  font-weight: bold;
+  font-size: 12px;
 }
 
 .subgroup-name {
-  font-size: 13px;
-  font-weight: 600;
-  display: flex;
-  align-items: center;
+  line-height: 1.2;
 }
 
 .subgroup-day {
   font-size: 10px;
   color: var(--el-text-color-secondary);
-  margin-top: 2px;
+  opacity: 0.8;
 }
 
-.selected-group-card {
+/* 4. 选中字幕组控制栏与种子列表 (一体化主面板，消灭双重卡片嵌套) */
+.selected-subgroup-panel {
   flex: 1;
   min-height: 0;
   display: flex;
   flex-direction: column;
-  border-radius: 12px;
+  border-radius: 8px;
   background: var(--el-bg-color);
   border: 1px solid var(--el-border-color-lighter);
   overflow: hidden;
 }
 
-.selected-group-header {
+.subgroup-action-toolbar {
   flex-shrink: 0;
-  padding: 10px 14px;
+  padding: 8px 12px;
   border-bottom: 1px solid var(--el-border-color-lighter);
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 12px;
+  gap: 10px;
   background: var(--el-fill-color-lighter);
-  flex-wrap: wrap;
 }
 
-.group-title-status-row {
+.subgroup-toolbar-left {
   display: flex;
   align-items: center;
   gap: 8px;
+  min-width: 0;
 }
 
-.group-subscribed-tag {
-  font-size: 11px;
-}
-
-.current-group-title {
-  margin: 0;
-  font-size: 15px;
+.subgroup-curr-title {
+  font-size: 13px;
   font-weight: 700;
+  color: var(--el-text-color-primary);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
-.group-tags {
+.subgroup-tags-inline {
   display: flex;
-  flex-wrap: wrap;
   gap: 4px;
-  margin-top: 4px;
 }
 
-.group-header-right {
+.subgroup-toolbar-right {
   display: flex;
   align-items: center;
   gap: 8px;
+  flex-shrink: 0;
 }
 
 .match-regex-select {
-  width: 160px;
+  width: 140px;
 }
 
-.torrents-stream {
+/* 种子资源列表 (扁平极简列表，无小卡片框嵌套) */
+.subgroup-torrents-area {
   flex: 1;
   min-height: 0;
   display: flex;
   flex-direction: column;
-  padding: 10px 14px 12px;
   overflow: hidden;
 }
 
-.torrents-header {
+.torrents-area-header {
   flex-shrink: 0;
-  font-size: 12px;
-  font-weight: 600;
-  color: var(--el-text-color-secondary);
-  margin-bottom: 6px;
+  padding: 6px 12px 4px;
+  border-bottom: 1px solid var(--el-border-color-extra-light);
 }
 
-.torrents-list-wrap {
+.torrents-count-hint {
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--el-text-color-secondary);
+}
+
+.torrents-list-container {
   flex: 1;
   min-height: 0;
   overflow: hidden;
@@ -2646,29 +2612,30 @@ onActivated(() => {
   height: 100%;
 }
 
-.torrents-list {
+.torrents-flat-list {
   display: flex;
   flex-direction: column;
-  gap: 6px;
 }
 
-.torrent-item-row {
+.torrent-flat-item {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 12px;
-  padding: 8px 10px;
-  border-radius: 8px;
-  background: var(--el-fill-color-blank);
-  border: 1px solid var(--el-border-color-extra-light);
-  transition: all 0.15s ease;
+  gap: 10px;
+  padding: 7px 12px;
+  border-bottom: 1px solid var(--el-border-color-extra-light);
+  transition: background 0.15s ease;
 }
 
-.torrent-item-row:hover {
+.torrent-flat-item:last-child {
+  border-bottom: none;
+}
+
+.torrent-flat-item:hover {
   background: var(--el-fill-color-light);
 }
 
-.torrent-main {
+.torrent-flat-info {
   flex: 1;
   min-width: 0;
   display: flex;
@@ -2676,18 +2643,22 @@ onActivated(() => {
   gap: 2px;
 }
 
-.torrent-name {
+.torrent-flat-title {
   font-size: 12px;
   line-height: 1.4;
   word-break: break-all;
+  color: var(--el-text-color-primary);
 }
 
-.torrent-meta {
+.torrent-flat-meta {
   font-size: 11px;
   color: var(--el-text-color-secondary);
+  display: flex;
+  align-items: center;
+  gap: 4px;
 }
 
-.torrent-actions {
+.torrent-flat-actions {
   display: flex;
   align-items: center;
   gap: 4px;
@@ -2703,6 +2674,12 @@ onActivated(() => {
   justify-content: center;
   margin: 0;
   padding: 20px 0;
+}
+
+.empty-switch-hints {
+  display: flex;
+  gap: 8px;
+  margin-top: 10px;
 }
 
 /* ================= 手动 RSS 弹窗 ================= */
@@ -2801,9 +2778,17 @@ onActivated(() => {
   cursor: not-allowed;
 }
 
+.batch-cart-badge-wrap {
+  display: inline-flex;
+  align-items: center;
+  margin-right: 4px;
+}
+
 .batch-cart-badge-wrap :deep(.el-badge__content) {
-  top: 4px;
-  right: 4px;
+  top: 0;
+  right: 8px;
+  transform: translateY(-50%);
+  z-index: 2;
 }
 
 .add-cart-btn {
@@ -2936,17 +2921,23 @@ onActivated(() => {
 
 <style>
 .anime-group-dialog {
-  border-radius: 14px;
+  border-radius: 12px;
   overflow: hidden;
 }
 
 .anime-group-dialog .el-dialog__body {
-  padding: 16px 20px 20px !important;
-  background: var(--el-bg-color-page);
-  height: 590px !important;
-  min-height: 590px !important;
-  max-height: 590px !important;
+  padding: 12px 18px 16px !important;
+  background: var(--el-bg-color);
+  height: 560px !important;
+  min-height: 560px !important;
+  max-height: 560px !important;
   box-sizing: border-box;
   overflow: hidden;
+}
+
+.anime-group-dialog .el-loading-mask {
+  background-color: color-mix(in srgb, var(--el-bg-color) 70%, transparent) !important;
+  backdrop-filter: blur(4px) !important;
+  border-radius: 8px !important;
 }
 </style>
