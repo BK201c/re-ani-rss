@@ -11,4 +11,5 @@ public class AniBTQueryDTO implements Serializable {
     private String season;
     private String bgmUrl;
     private String title;
+    private Boolean refresh = false;
 }

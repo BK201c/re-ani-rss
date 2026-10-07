@@ -67,7 +67,7 @@
   </SettingsItem>
   <SettingsItem label="启动页">
     <el-select v-model="startupPage" class="width-150">
-      <el-option label="首页" value="/home"/>
+      <el-option label="RSS页" value="/subscriptions/add"/>
       <el-option label="订阅页" value="/subscriptions"/>
     </el-select>
   </SettingsItem>

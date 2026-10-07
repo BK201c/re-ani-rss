@@ -1,30 +1,29 @@
 import {createRouter, createWebHashHistory} from 'vue-router'
-import DashboardView from '@/view/home/DashboardView.vue'
+import AddSubscriptionView from '@/view/home/AddSubscriptionView.vue'
 import SubscriptionView from '@/view/home/SubscriptionView.vue'
 import TorrentsInfosView from '@/view/home/TorrentsInfosView.vue'
 import LogsView from '@/view/home/LogsView.vue'
 import ConfigView from '@/view/home/ConfigView.vue'
-import AddSubscriptionView from '@/view/home/AddSubscriptionView.vue'
 import {startupPage} from '@/js/global.js'
 
-const startupPaths = ['/home', '/subscriptions']
+const startupPaths = ['/subscriptions/add', '/subscriptions']
 
 const routes = [
     {
         path: '/',
-        redirect: () => startupPaths.includes(startupPage.value) ? startupPage.value : '/home'
+        redirect: () => startupPaths.includes(startupPage.value) ? startupPage.value : '/subscriptions/add'
     },
     {
         path: '/home',
-        component: DashboardView
-    },
-    {
-        path: '/subscriptions',
-        component: SubscriptionView
+        redirect: '/subscriptions/add'
     },
     {
         path: '/subscriptions/add',
         component: AddSubscriptionView
+    },
+    {
+        path: '/subscriptions',
+        component: SubscriptionView
     },
     {
         path: '/downloads',

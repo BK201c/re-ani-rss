@@ -47,7 +47,10 @@ const coverClickAction = useLocalStorage('cover-click-action', 'edit')
 /**
  * 启动页
  */
-const startupPage = useLocalStorage('startup-page', '/home')
+const startupPage = useLocalStorage('startup-page', '/subscriptions/add')
+if (startupPage.value === '/home') {
+    startupPage.value = '/subscriptions/add'
+}
 
 /**
  * 显示视频列表

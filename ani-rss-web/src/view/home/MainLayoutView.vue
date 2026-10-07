@@ -10,23 +10,17 @@
           :ellipsis="false"
           class="app-menu"
           router>
-        <el-menu-item index="/home">
+        <el-menu-item index="/subscriptions/add">
           <el-icon>
-            <House/>
+            <Connection/>
           </el-icon>
-          <span>首页</span>
+          <span>RSS</span>
         </el-menu-item>
         <el-menu-item index="/subscriptions">
           <el-icon>
             <Collection/>
           </el-icon>
           <span>订阅</span>
-        </el-menu-item>
-        <el-menu-item index="/subscriptions/add">
-          <el-icon>
-            <Connection/>
-          </el-icon>
-          <span>RSS</span>
         </el-menu-item>
         <el-menu-item index="/downloads">
           <el-icon>
@@ -61,7 +55,7 @@
 <script setup>
 import {onMounted} from "vue";
 import {RouterView, useRoute} from "vue-router";
-import {Collection, Connection, Download, House, Setting, Tickets} from "@element-plus/icons-vue";
+import {Collection, Connection, Download, Setting, Tickets} from "@element-plus/icons-vue";
 import {initLayout} from "@/js/global.js";
 
 const route = useRoute()

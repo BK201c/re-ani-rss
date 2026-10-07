@@ -53,6 +53,12 @@ public class AniBT implements Serializable {
         private Boolean exists;
         @Schema(description = "RSS发布数量")
         private Integer rssReleaseCount;
+        @Schema(description = "首播日期")
+        private String premiereDate;
+        @Schema(description = "播出时间戳（秒）")
+        private Long airingAt;
+        @Schema(description = "排期状态")
+        private String scheduleStatus;
     }
 
     @Data

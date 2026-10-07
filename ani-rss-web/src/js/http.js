@@ -376,10 +376,11 @@ export let getAniBySubjectId = (id) => api.post(`api/getAniBySubjectId?id=${id}`
  * @param text
  * @returns {Promise<unknown>}
  */
-export let aniBT = (season, bgmUrl, text) => api.post('api/aniBT', {
+export let aniBT = (season, bgmUrl, text, refresh = false) => api.post('api/aniBT', {
     season,
     bgmUrl,
-    title: text
+    title: text,
+    refresh
 })
 
 /**

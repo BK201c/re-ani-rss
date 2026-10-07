@@ -49,8 +49,14 @@ let downloadPath = ref('')
 let callback = ref(() => {
 })
 
+const emit = defineEmits(['saved'])
+
 const editChange = async (fun) => {
   callback.value = fun
+  if (!ani.value.id) {
+    editAni()
+    return
+  }
   let req = await http.downloadPath(ani.value)
   downloadPath.value = req.data.downloadPath
   if (req.data.change) {
@@ -61,15 +67,19 @@ const editChange = async (fun) => {
 }
 
 const editAni = () => {
-  let action = () => http.setAni(move.value, ani.value)
-      .then(res => {
-        ElMessage.success(res.message)
-        window.$reLoadList()
-        dialogVisible.value = false
-      })
-      .finally(callback.value)
+  let action = () => {
+    const apiCall = ani.value.id ? http.setAni(move.value, ani.value) : http.addAni(ani.value)
+    return apiCall
+        .then(res => {
+          ElMessage.success(res.message)
+          window.$reLoadList?.()
+          emit('saved')
+          dialogVisible.value = false
+        })
+        .finally(callback.value)
+  }
 
-  if (!move.value) {
+  if (!move.value || !ani.value.id) {
     action()
     return
   }
