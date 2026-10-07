@@ -66,7 +66,7 @@
                 v-model="selectedSeason"
                 class="subscription-select season-select"
                 placeholder="选择季度"
-                :disabled="animeListLoading || (searchKeyword && searchKeyword.length > 0)"
+                :disabled="animeListLoading"
                 @change="handleSeasonChange">
               <el-option
                   v-for="s in seasons"
@@ -1282,6 +1282,7 @@ const loadAuthorityData = async (keyword = '', seasonParam = null, forceRefresh 
 
 // 季度变更
 const handleSeasonChange = (val) => {
+  searchKeyword.value = ''
   selectedSeason.value = val
   loadAuthorityData('', val, false)
 }
