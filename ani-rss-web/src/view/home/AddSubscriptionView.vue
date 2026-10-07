@@ -1604,6 +1604,7 @@ const normalizeAnimeItem = (item) => {
   }
 
   const cover = item.cover || ''
+  const score = item.rating || item.score || 0
   const matched = findMatchedSubscriptions({ rawId: bgmId, bgmId, title, raw: item })
   const subs = matched.map(it => it.subgroup).filter(Boolean)
   const exists = isSubscribedListLoaded.value ? (matched.length > 0) : (matched.length > 0 || Boolean(item.exists))
