@@ -37,7 +37,12 @@
             :key="subAni.id"
             class="multi-sub-choice-item"
             @click="openSpecificSubEdit(subAni)">
-          <div class="multi-sub-name">{{ subAni.subgroup || '未知字幕组' }}</div>
+          <div class="multi-sub-name-wrap">
+            <span class="multi-sub-name">{{ subAni.subgroup || '未知字幕组' }}</span>
+            <el-tag size="small" :type="isSubDisabled(subAni) ? 'info' : 'success'" effect="plain">
+              {{ isSubDisabled(subAni) ? '已禁用' : '已启用' }}
+            </el-tag>
+          </div>
           <el-button size="small" type="primary" text bg icon="Edit">编辑</el-button>
         </div>
       </div>
@@ -229,33 +234,27 @@
                             <div class="list-card-info">
                               <div class="list-card-info-inner">
                                 <div class="card-title-row">
-                                  <el-tooltip :show-after="300" :content="`${anime.title} (点击在 Bangumi 查看)`" placement="top">
-                                    <el-text class="list-card-title clickable-title" line-clamp="2" truncated @click.stop="openBgmUrl(anime)">
+                                  <el-tooltip :show-after="300" :content="`${anime.title}`" placement="top">
+                                    <el-text class="list-card-title clickable-title" line-clamp="1" truncated @click.stop="openBgmUrl(anime)">
                                       {{ anime.title }}
                                     </el-text>
                                   </el-tooltip>
                                 </div>
-                                <div v-if="formatAirTime(anime)" class="card-air-time-row">
-                                  <el-tooltip :show-after="300"
-                                      :content="formatAirTime(anime).tooltip"
-                                      placement="top"
-                                      raw-content
-                                  >
-                                    <div class="card-air-time-badge">
-                                      <el-icon class="air-time-icon"><Timer /></el-icon>
-                                      <span class="air-time-text">{{ formatAirTime(anime).display }}</span>
-                                      <span v-if="formatAirTime(anime).hasTime" class="air-time-tz-tag">北京</span>
-                                    </div>
-                                  </el-tooltip>
-                                </div>
-                                <div class="list-card-tags">
+                                <div class="card-status-row">
                                   <template v-if="anime.exists">
-                                    <el-tag size="small" :type="getAnimeTagType(anime)">
+                                    <el-tag size="small" :type="getAnimeTagType(anime)" class="card-status-tag">
                                       {{ getAnimeStatusText(anime) }}
                                     </el-tag>
                                     <el-tag v-if="getAnimeProgress(anime)" size="small" type="warning" class="card-progress-tag">
                                       {{ getAnimeProgress(anime) }}
                                     </el-tag>
+                                  </template>
+                                  <el-tag v-else size="small" type="info" effect="plain" class="card-status-tag">
+                                    未订阅
+                                  </el-tag>
+                                </div>
+                                <div v-if="anime.exists && anime.subscribedSubgroups?.length" class="card-subgroup-row">
+                                  <div class="card-subgroup-list">
                                     <el-tag
                                         v-for="sub in anime.subscribedSubgroups"
                                         :key="sub"
@@ -266,19 +265,26 @@
                                         :title="`已订阅字幕组: ${sub}`">
                                       {{ sub }}
                                     </el-tag>
-                                  </template>
-                                  <el-tag v-else size="small" type="info" effect="plain">
-                                    未订阅
-                                  </el-tag>
+                                  </div>
                                 </div>
                               </div>
-                              <div class="list-card-actions">
-                                <el-button size="small" type="primary" text bg icon="Plus" @click.stop="openAnimeDialog(anime)">
-                                  订阅
-                                </el-button>
-                                <el-button size="small" text bg icon="Edit" @click.stop="handleEditAnime(anime)">
-                                  编辑
-                                </el-button>
+                              <div class="list-card-bottom-row">
+                                <div class="card-bottom-air-time">
+                                  <div v-if="formatAirTime(anime)" class="card-air-time-row">
+                                    <div class="card-air-time-badge">
+                                      <el-icon class="air-time-icon"><Timer /></el-icon>
+                                      <span class="air-time-text">{{ formatAirTime(anime).display }}</span>
+                                    </div>
+                                  </div>
+                                </div>
+                                <div class="list-card-actions">
+                                  <el-button size="small" type="primary" text bg icon="Plus" @click.stop="openAnimeDialog(anime)">
+                                    订阅
+                                  </el-button>
+                                  <el-button size="small" text bg icon="Edit" @click.stop="handleEditAnime(anime)">
+                                    编辑
+                                  </el-button>
+                                </div>
                               </div>
                             </div>
                           </div>
@@ -324,7 +330,7 @@
                             </div>
                             <div class="list-row-info">
                               <div class="list-row-title-row">
-                                <el-tooltip :show-after="300" :content="`${anime.title} (点击在 Bangumi 查看)`" placement="top">
+                                <el-tooltip :show-after="300" :content="`${anime.title} `" placement="top">
                                   <el-text class="list-row-title clickable-title" truncated @click.stop="openBgmUrl(anime)">
                                     {{ anime.title }}
                                   </el-text>
@@ -332,17 +338,10 @@
                               </div>
                               <div class="list-row-meta-row">
                                 <div v-if="formatAirTime(anime)" class="card-air-time-row mini-air-time">
-                                  <el-tooltip :show-after="300"
-                                      :content="formatAirTime(anime).tooltip"
-                                      placement="top"
-                                      raw-content
-                                  >
-                                    <div class="card-air-time-badge">
-                                      <el-icon class="air-time-icon"><Timer /></el-icon>
-                                      <span class="air-time-text">{{ formatAirTime(anime).display }}</span>
-                                      <span v-if="formatAirTime(anime).hasTime" class="air-time-tz-tag">北京</span>
-                                    </div>
-                                  </el-tooltip>
+                                  <div class="card-air-time-badge">
+                                    <el-icon class="air-time-icon"><Timer /></el-icon>
+                                    <span class="air-time-text">{{ formatAirTime(anime).display }}</span>
+                                  </div>
                                 </div>
                                 <div class="list-card-tags inline-tags">
                                   <template v-if="anime.exists">
@@ -504,7 +503,7 @@
                 >
                   <img :src="proxyImage(item.cover)" class="batch-cart-item-cover" />
                   <div class="batch-cart-item-info">
-                    <div class="batch-cart-title clickable-title" :title="`${item.animeTitle} (点击在 Bangumi 查看)`" @click.stop="openBgmUrl(item)">{{ item.animeTitle }}</div>
+                    <div class="batch-cart-title clickable-title" :title="`${item.animeTitle} `" @click.stop="openBgmUrl(item)">{{ item.animeTitle }}</div>
                     <div class="batch-cart-meta">
                       <el-tag size="small" type="primary" effect="plain">{{ item.sourceLabel }}</el-tag>
                       <el-tag size="small" type="success" effect="plain">{{ item.groupLabel }}</el-tag>
@@ -654,7 +653,7 @@
             />
             <div class="anime-header-detail">
               <div class="anime-header-title-row">
-                <span class="anime-header-title clickable-title" :title="`${selectedAnime.title} (点击在 Bangumi 查看)`" @click.stop="openBgmUrl(selectedAnime)">{{ selectedAnime.title }}</span>
+                <span class="anime-header-title clickable-title" :title="`${selectedAnime.title} `" @click.stop="openBgmUrl(selectedAnime)">{{ selectedAnime.title }}</span>
                 <el-tag v-if="selectedAnime.exists" type="success" size="small">已在订阅中</el-tag>
               </div>
               <div class="anime-header-meta-row">
@@ -1148,12 +1147,15 @@ const getAnimeProgress = (anime) => {
   return `${curr} / ${total}`
 }
 
+// 判断单个订阅是否处于禁用状态 (兼容后端实体属性 enable 与前端属性 enabled)
+const isSubDisabled = (s) => s?.enable === false || s?.enabled === false
+
 // 获取番剧订阅状态文字
 const getAnimeStatusText = (anime) => {
   if (!anime?.exists) return '未订阅'
   const matched = findMatchedSubscriptions(anime)
   if (!matched.length) return '已订阅'
-  const allDisabled = matched.every(s => s.enabled === false)
+  const allDisabled = matched.every(isSubDisabled)
   return allDisabled ? '已禁用' : '已启用'
 }
 
@@ -1162,7 +1164,7 @@ const getAnimeTagType = (anime) => {
   if (!anime?.exists) return 'info'
   const matched = findMatchedSubscriptions(anime)
   if (!matched.length) return 'success'
-  const allDisabled = matched.every(s => s.enabled === false)
+  const allDisabled = matched.every(isSubDisabled)
   return allDisabled ? 'info' : 'success'
 }
 
@@ -1229,7 +1231,7 @@ const groupedAnimeList = computed(() => {
       items: (w.items || []).filter(it => {
         if (!it.exists) return false
         const matched = findMatchedSubscriptions(it)
-        return matched.length > 0 && matched.some(s => s.enabled !== false)
+        return matched.length > 0 && matched.some(s => !isSubDisabled(s))
       })
     }))
   } else if (filterSubscribeStatus.value === 'disabled') {
@@ -1238,7 +1240,7 @@ const groupedAnimeList = computed(() => {
       items: (w.items || []).filter(it => {
         if (!it.exists) return false
         const matched = findMatchedSubscriptions(it)
-        return matched.length > 0 && matched.every(s => s.enabled === false)
+        return matched.length > 0 && matched.every(isSubDisabled)
       })
     }))
   }
@@ -1636,7 +1638,7 @@ const formatAirTime = (anime) => {
 
       return {
         hasTime: true,
-        display: `${bj.m}-${bj.d} ${bj.h}:${bj.min}`,
+        display: `${bj.h}:${bj.min} ${bj.m}-${bj.d}`,
         tooltip: `播出时间：<br/>• 北京时间: ${bj.m}月${bj.d}日 ${bj.h}:${bj.min}<br/>• 日本时间: ${jp.m}月${jp.d}日 ${jp.h}:${jp.min} (JST)`
       }
     }
@@ -2545,22 +2547,12 @@ onActivated(() => {
   display: inline-flex;
   align-items: center;
   gap: 4px;
-  padding: 1px 6px;
-  background: var(--el-fill-color-light);
-  border: 1px solid var(--el-border-color-lighter);
-  border-radius: 4px;
   font-size: 11px;
-  color: var(--el-text-color-regular);
+  color: var(--el-text-color-secondary);
   cursor: default;
-  transition: all 0.2s;
   line-height: 1.4;
 }
 
-.card-air-time-badge:hover {
-  border-color: var(--el-color-primary-light-5);
-  color: var(--el-color-primary);
-  background: var(--el-color-primary-light-9);
-}
 
 .air-time-icon {
   font-size: 12px;
@@ -2588,23 +2580,93 @@ onActivated(() => {
   margin-top: 2px;
 }
 
-.card-progress-tag {
-  font-weight: 600;
-  font-variant-numeric: tabular-nums;
+/* 字幕组专属行 */
+.card-subgroup-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+  margin-top: 2px;
+}
+
+.subgroup-row-label {
+  font-size: 11px;
+  color: var(--el-text-color-secondary);
+  flex-shrink: 0;
+  line-height: 1;
+}
+
+.card-subgroup-list {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+  overflow: hidden;
 }
 
 .card-subgroup-tag {
-  max-width: 140px;
+  max-width: 180px;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+  font-size: 11px;
+  height: 20px;
+  line-height: 18px;
+  padding: 0 6px;
+}
+
+/* 卡片底部操作与状态条 */
+.list-card-bottom-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin-top: auto;
+  min-width: 0;
+}
+
+.card-status-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+  margin-top: 1px;
+}
+
+.card-status-tag {
+  font-weight: 500;
+  font-size: 11px;
+  height: 22px;
+  line-height: 20px;
+  padding: 0 6px;
+}
+
+.card-progress-tag {
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  font-size: 11px;
+  height: 22px;
+  line-height: 20px;
+  padding: 0 6px;
+}
+
+.card-bottom-air-time {
+  display: flex;
+  align-items: center;
+  min-width: 0;
+  overflow: hidden;
+}
+
+.card-bottom-air-time .card-air-time-row {
+  margin-top: 0;
 }
 
 .list-card-actions {
   display: flex;
+  align-items: center;
   justify-content: flex-end;
-  gap: 8px;
-  margin-top: auto;
+  gap: 6px;
+  flex-shrink: 0;
 }
 
 /* ================= 布局切换与列表模式样式 ================= */
@@ -2782,6 +2844,12 @@ onActivated(() => {
 .multi-sub-choice-item:hover {
   background: var(--el-fill-color);
   border-color: var(--el-color-primary-light-5);
+}
+
+.multi-sub-name-wrap {
+  display: flex;
+  align-items: center;
+  gap: 8px;
 }
 
 .multi-sub-name {
