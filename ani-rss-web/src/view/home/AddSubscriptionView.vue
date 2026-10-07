@@ -142,14 +142,13 @@
                 @click="openManualDialog">
               手动 RSS
             </el-button>
-            <el-badge :value="batchCart.length" :hidden="!batchCart.length" class="batch-cart-badge-wrap">
-              <el-button
-                  class="auto-button"
-                  icon="Files"
-                  @click="openBatchCartDialog">
-                待订阅清单
-              </el-button>
-            </el-badge>
+            <el-button
+                class="auto-button"
+                icon="Files"
+                @click="openBatchCartDialog">
+              <span>待订阅清单</span>
+              <span v-if="batchCart.length" class="cart-btn-count">({{ batchCart.length }})</span>
+            </el-button>
           </div>
         </div>
 
@@ -3308,17 +3307,11 @@ onActivated(() => {
   cursor: not-allowed;
 }
 
-.batch-cart-badge-wrap {
-  display: inline-flex;
-  align-items: center;
-  margin-right: 4px;
-}
-
-.batch-cart-badge-wrap :deep(.el-badge__content) {
-  top: 0;
-  right: 8px;
-  transform: translateY(-50%);
-  z-index: 2;
+.cart-btn-count {
+  margin-left: 4px;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  color: var(--el-color-primary);
 }
 
 .add-cart-btn {
