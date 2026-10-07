@@ -10,7 +10,7 @@
       <div class="list-card-info">
         <div class="list-card-info-inner">
           <div class="flex">
-            <el-tooltip :content="item.title" placement="top">
+            <el-tooltip :show-after="300" :content="item.title" placement="top">
               <el-text :line-clamp="1"
                        @click="openBgmUrl(item)"
                        class="list-card-title"
@@ -41,7 +41,7 @@
               未启用
             </el-tag>
             <el-tag type="info">
-              <el-tooltip :content="item['subgroup']">
+              <el-tooltip :show-after="300" :content="item['subgroup']">
                 <el-text line-clamp="1" size="small" class="list-card-subgroup">
                   {{ item['subgroup'] ? item['subgroup'] : '未知字幕组' }}
                 </el-text>

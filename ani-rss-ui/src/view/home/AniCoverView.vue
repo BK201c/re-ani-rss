@@ -19,7 +19,7 @@
         未启用
       </div>
       <div class="cover-overlay">
-        <el-tooltip :content="item.title" placement="top">
+        <el-tooltip :show-after="300" :content="item.title" placement="top">
           <el-text class="cover-title" line-clamp="2" @click.stop="openBgmUrl(item)">
             {{ item.title }}
           </el-text>

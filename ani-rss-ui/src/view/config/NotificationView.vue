@@ -16,7 +16,7 @@
         <el-card v-for="it in props.config['notificationConfigList']" shadow="never" class="notification-card">
           <div class="flex notification-card-content">
             <div class="notification-card-main">
-              <el-tooltip :content="getLabel(it['notificationType'])" placement="top">
+              <el-tooltip :show-after="300" :content="getLabel(it['notificationType'])" placement="top">
                 <p class="notification-card-title">
                   {{ getLabel(it['notificationType']) }}
                 </p>

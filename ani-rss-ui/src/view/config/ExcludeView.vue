@@ -28,7 +28,7 @@
           @close="handleClose(tag)"
           class="exclude-tag"
       >
-        <el-tooltip :content="tag">
+        <el-tooltip :show-after="300" :content="tag">
           <el-text line-clamp="1" size="small" class="exclude-tag-text">
             {{ tag }}
           </el-text>

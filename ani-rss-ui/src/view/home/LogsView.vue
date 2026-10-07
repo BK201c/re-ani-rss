@@ -3,12 +3,12 @@
     <PageHeaderView title="日志" :subtitle="`共 ${logs.length} 条 · 显示 ${filteredLogs.length} 条`">
       <template #actions>
         <div class="log-actions">
-          <el-tooltip content="下载日志" placement="bottom">
+          <el-tooltip :show-after="300" content="下载日志" placement="bottom">
             <el-button @click="downloadLogs" class="auto-button" icon="Download">
               下载
             </el-button>
           </el-tooltip>
-          <el-tooltip content="刷新日志" placement="bottom">
+          <el-tooltip :show-after="300" content="刷新日志" placement="bottom">
             <el-button :loading="getLogsLoading" @click="getLogs" class="auto-button" icon="Refresh">
               刷新
             </el-button>
@@ -83,11 +83,11 @@
                  :key="`${entry.timestamp}-${index}`"
                  class="log-entry"
                  :class="`level-${entry.level.toLowerCase()}`">
-              <el-tooltip :content="entry.timestamp" placement="top">
+              <el-tooltip :show-after="300" :content="entry.timestamp" placement="top">
                 <time class="log-time">{{ entry.time }}</time>
               </el-tooltip>
               <span class="log-level">{{ entry.level }}</span>
-              <el-tooltip :content="entry['loggerName']" placement="top">
+              <el-tooltip :show-after="300" :content="entry['loggerName']" placement="top">
                 <div class="log-source">
                   <span class="logger-name">{{ entry.shortLoggerName }}</span>
                   <span class="thread-name">{{ entry.threadName }}</span>

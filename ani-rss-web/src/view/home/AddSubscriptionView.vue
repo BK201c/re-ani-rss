@@ -4,6 +4,8 @@
     <CollectionView ref="collectionRef"/>
     <BgmView ref="bgmRef" @callback="bgmCallback"/>
     <EditAniView ref="editAniRef" @saved="handleEditSaved"/>
+    <CoverView ref="coverRef"/>
+    <DelAniView ref="delAniRef" @callback="handleDelSaved"/>
 
     <!-- 多订阅选择弹窗 -->
     <el-dialog
@@ -83,20 +85,22 @@
               <el-option label="全部状态" value="all"/>
               <el-option label="仅未订阅" value="unsubscribed"/>
               <el-option label="仅已订阅" value="subscribed"/>
+              <el-option label="已订阅 · 已启用" value="enabled"/>
+              <el-option label="已订阅 · 已禁用" value="disabled"/>
             </el-select>
 
             <el-radio-group
                 v-model="viewLayoutMode"
                 class="layout-switch-group">
               <el-radio-button value="card">
-                <el-tooltip content="卡片布局" placement="top">
+                <el-tooltip :show-after="300" content="卡片布局" placement="top">
                   <div class="layout-toggle-item">
                     <el-icon><Grid /></el-icon>
                   </div>
                 </el-tooltip>
               </el-radio-button>
               <el-radio-button value="list">
-                <el-tooltip content="列表布局" placement="top">
+                <el-tooltip :show-after="300" content="列表布局" placement="top">
                   <div class="layout-toggle-item">
                     <el-icon><List /></el-icon>
                   </div>
@@ -112,6 +116,13 @@
                 :loading="animeListLoading"
                 @click="retryLoad">
               刷新
+            </el-button>
+            <el-button
+                class="auto-button"
+                :type="isManageMode ? 'primary' : 'default'"
+                icon="Operation"
+                @click="toggleManageMode">
+              {{ isManageMode ? '退出管理' : '管理' }}
             </el-button>
             <el-button
                 class="auto-button"
@@ -164,6 +175,15 @@
                     <h2 class="list-week-title">
                       {{ weekGroup.weekLabel }}
                       <span class="week-count-tag">({{ weekGroup.items.length }})</span>
+                      <el-button
+                          v-if="isManageMode && hasSubscribedInWeek(weekGroup)"
+                          size="small"
+                          text
+                          type="primary"
+                          class="week-select-all-btn"
+                          @click="toggleSelectWeekManage(weekGroup)">
+                        {{ isWeekManageAllSelected(weekGroup) ? '取消全选本周' : '全选本周' }}
+                      </el-button>
                     </h2>
                     <!-- 卡片布局 -->
                     <div v-if="viewLayoutMode === 'card'" class="grid-container card-grid-container">
@@ -171,16 +191,31 @@
                           v-for="anime in weekGroup.items"
                           :key="anime.id"
                           class="anime-grid-card-wrap"
-                          @click="openAnimeDialog(anime)"
+                          :class="{
+                            'is-manage-mode': isManageMode,
+                            'is-selected': isAnimeManageSelected(anime),
+                            'is-disabled': isManageMode && !anime.exists
+                          }"
+                          @click="handleCardClick(anime)"
                       >
+                        <!-- 卡片管理勾选框 -->
+                        <div v-if="isManageMode" class="card-manage-check" @click.stop>
+                          <el-checkbox
+                              :model-value="isAnimeManageSelected(anime)"
+                              :disabled="!anime.exists"
+                              @change="toggleManageAnime(anime)"
+                          />
+                        </div>
                         <el-card shadow="never" class="anime-card-box">
                           <div class="list-card-content">
                             <div class="list-card-image-container">
                               <img
                                   :src="proxyImage(anime.cover)"
                                   :alt="anime.title"
-                                  class="list-card-image"
+                                  class="list-card-image clickable-cover"
                                   loading="lazy"
+                                  title="点击更换封面"
+                                  @click.stop="handleCoverClick(anime)"
                               />
                               <span v-if="anime.score > 0" class="card-score-badge">
                                 {{ Number(anime.score).toFixed(1) }}
@@ -189,14 +224,14 @@
                             <div class="list-card-info">
                               <div class="list-card-info-inner">
                                 <div class="card-title-row">
-                                  <el-tooltip :content="anime.title" placement="top">
+                                  <el-tooltip :show-after="300" :content="anime.title" placement="top">
                                     <el-text class="list-card-title" line-clamp="2" truncated>
                                       {{ anime.title }}
                                     </el-text>
                                   </el-tooltip>
                                 </div>
                                 <div v-if="formatAirTime(anime)" class="card-air-time-row">
-                                  <el-tooltip
+                                  <el-tooltip :show-after="300"
                                       :content="formatAirTime(anime).tooltip"
                                       placement="top"
                                       raw-content
@@ -210,7 +245,12 @@
                                 </div>
                                 <div class="list-card-tags">
                                   <template v-if="anime.exists">
-                                    <el-tag size="small" type="success">已订阅</el-tag>
+                                    <el-tag size="small" :type="getAnimeTagType(anime)">
+                                      {{ getAnimeStatusText(anime) }}
+                                    </el-tag>
+                                    <el-tag v-if="getAnimeProgress(anime)" size="small" type="warning" class="card-progress-tag">
+                                      {{ getAnimeProgress(anime) }}
+                                    </el-tag>
                                     <el-tag
                                         v-for="sub in anime.subscribedSubgroups"
                                         :key="sub"
@@ -247,16 +287,31 @@
                           v-for="anime in weekGroup.items"
                           :key="anime.id"
                           class="anime-list-item-wrap"
-                          @click="openAnimeDialog(anime)"
+                          :class="{
+                            'is-manage-mode': isManageMode,
+                            'is-selected': isAnimeManageSelected(anime),
+                            'is-disabled': isManageMode && !anime.exists
+                          }"
+                          @click="handleCardClick(anime)"
                       >
+                        <!-- 列表管理勾选框 -->
+                        <div v-if="isManageMode" class="list-row-manage-check" @click.stop>
+                          <el-checkbox
+                              :model-value="isAnimeManageSelected(anime)"
+                              :disabled="!anime.exists"
+                              @change="toggleManageAnime(anime)"
+                          />
+                        </div>
                         <el-card shadow="never" class="anime-row-card-box">
                           <div class="list-row-content">
                             <div class="list-row-image-container">
                               <img
                                   :src="proxyImage(anime.cover)"
                                   :alt="anime.title"
-                                  class="list-row-image"
+                                  class="list-row-image clickable-cover"
                                   loading="lazy"
+                                  title="点击更换封面"
+                                  @click.stop="handleCoverClick(anime)"
                               />
                               <span v-if="anime.score > 0" class="row-score-badge">
                                 {{ Number(anime.score).toFixed(1) }}
@@ -264,7 +319,7 @@
                             </div>
                             <div class="list-row-info">
                               <div class="list-row-title-row">
-                                <el-tooltip :content="anime.title" placement="top">
+                                <el-tooltip :show-after="300" :content="anime.title" placement="top">
                                   <el-text class="list-row-title" truncated>
                                     {{ anime.title }}
                                   </el-text>
@@ -272,7 +327,7 @@
                               </div>
                               <div class="list-row-meta-row">
                                 <div v-if="formatAirTime(anime)" class="card-air-time-row mini-air-time">
-                                  <el-tooltip
+                                  <el-tooltip :show-after="300"
                                       :content="formatAirTime(anime).tooltip"
                                       placement="top"
                                       raw-content
@@ -286,7 +341,12 @@
                                 </div>
                                 <div class="list-card-tags inline-tags">
                                   <template v-if="anime.exists">
-                                    <el-tag size="small" type="success">已订阅</el-tag>
+                                    <el-tag size="small" :type="getAnimeTagType(anime)">
+                                      {{ getAnimeStatusText(anime) }}
+                                    </el-tag>
+                                    <el-tag v-if="getAnimeProgress(anime)" size="small" type="warning" class="card-progress-tag">
+                                      {{ getAnimeProgress(anime) }}
+                                    </el-tag>
                                     <el-tag
                                         v-for="sub in anime.subscribedSubgroups"
                                         :key="sub"
@@ -317,6 +377,72 @@
                       </div>
                     </div>
                   </div>
+
+                  <!-- 管理模式底部悬浮工具栏 -->
+                  <transition name="el-zoom-in-bottom">
+                    <div v-if="isManageMode && selectedManageIds.length > 0" class="manage-floating-bar">
+                      <div class="manage-floating-info">
+                        已选择 <strong>{{ selectedManageIds.length }}</strong> 部番剧
+                        <span class="manage-sub-count">({{ selectedSubCount }} 个订阅)</span>
+                      </div>
+                      <div class="manage-floating-actions">
+                        <el-button
+                            size="small"
+                            type="primary"
+                            plain
+                            icon="CircleCheck"
+                            :loading="manageActionLoading"
+                            @click="handleBatchEnable(true)">
+                          批量启用
+                        </el-button>
+                        <el-button
+                            size="small"
+                            type="warning"
+                            plain
+                            icon="CircleClose"
+                            :loading="manageActionLoading"
+                            @click="handleBatchEnable(false)">
+                          禁用
+                        </el-button>
+                        <el-button
+                            size="small"
+                            type="danger"
+                            plain
+                            icon="Delete"
+                            :loading="manageActionLoading"
+                            @click="handleBatchDelete">
+                          删除订阅
+                        </el-button>
+                        <el-button
+                            size="small"
+                            icon="RefreshRight"
+                            :loading="manageActionLoading"
+                            @click="handleUpdateTotalEpisode(false)">
+                          更新总集数
+                        </el-button>
+                        <el-button
+                            size="small"
+                            icon="Refresh"
+                            :loading="manageActionLoading"
+                            @click="handleUpdateTotalEpisode(true)">
+                          强制更新总集数
+                        </el-button>
+                        <el-button
+                            size="small"
+                            icon="MagicStick"
+                            :loading="manageActionLoading"
+                            @click="handleBatchScrape">
+                          刮削
+                        </el-button>
+                        <el-button
+                            size="small"
+                            text
+                            @click="clearManageSelection">
+                          取消选择
+                        </el-button>
+                      </div>
+                    </div>
+                  </transition>
                 </template>
 
                 <!-- 空状态展示 -->
@@ -531,7 +657,7 @@
                   Bangumi 评分: <strong>{{ Number(selectedAnime.score).toFixed(1) }}</strong>
                 </span>
                 <span v-if="formatAirTime(selectedAnime)" class="anime-header-air-time">
-                  <el-tooltip
+                  <el-tooltip :show-after="300"
                       :content="formatAirTime(selectedAnime).tooltip"
                       placement="top"
                       raw-content
@@ -790,8 +916,11 @@ import {
   ArrowRight,
   Back,
   Check,
+  CircleCheck,
+  CircleClose,
   Close,
   CopyDocument,
+  Delete,
   Download,
   Edit,
   Files,
@@ -799,14 +928,19 @@ import {
   Grid,
   Link,
   List,
+  MagicStick,
+  Operation,
   Plus,
   Refresh,
+  RefreshRight,
   Search,
   Timer
 } from "@element-plus/icons-vue";
 
 import AniView from "@/view/home/AniView.vue";
 import EditAniView from "@/view/home/EditAniView.vue";
+import CoverView from "@/view/home/CoverView.vue";
+import DelAniView from "@/view/home/DelAniView.vue";
 import CollectionView from "@/view/home/CollectionView.vue";
 import BgmView from "@/view/home/BgmView.vue";
 import PageHeaderView from "@/view/custom/PageHeaderView.vue";
@@ -824,15 +958,22 @@ const router = useRouter()
 const collectionRef = ref()
 const bgmRef = ref()
 const editAniRef = ref()
+const coverRef = ref()
+const delAniRef = ref()
 
 // 流程状态
 const step = ref(1) // 1: 浏览选番, 2: 确认配置
 const manualDialogVisible = ref(false) // 手动输入 RSS 弹窗显隐
 const dialogVisible = ref(false)
-const filterSubscribeStatus = ref('all') // all, unsubscribed, subscribed
+const filterSubscribeStatus = ref('all') // all, unsubscribed, subscribed, enabled, disabled
 const viewLayoutMode = useLocalStorage('rss-view-layout-mode', 'card') // 'card' | 'list'
 const multiSubDialogVisible = ref(false)
 const multiSubList = ref([])
+
+// 管理模式 (批量操作)
+const isManageMode = ref(false)
+const selectedManageIds = ref([])
+const manageActionLoading = ref(false)
 
 const openManualDialog = () => {
   manualDialogVisible.value = true
@@ -940,81 +1081,6 @@ const manualForm = ref({
 // Step 2 配置数据
 const configuredAni = ref(JSON.parse(JSON.stringify(aniData)))
 
-// 按星期分组的番剧列表，支持星期筛选、关键词搜索与订阅状态过滤，且固定按星期顺序排序
-const groupedAnimeList = computed(() => {
-  let list = rawWeeksData.value || []
-  if (activeWeek.value !== '全部') {
-    list = list.filter(w => w.weekLabel === activeWeek.value)
-  }
-  if (searchKeyword.value.trim()) {
-    const kw = searchKeyword.value.trim().toLowerCase()
-    list = list.map(w => ({
-      ...w,
-      items: (w.items || []).filter(it => (it.title || '').toLowerCase().includes(kw))
-    }))
-  }
-  if (filterSubscribeStatus.value === 'subscribed') {
-    list = list.map(w => ({
-      ...w,
-      items: (w.items || []).filter(it => it.exists)
-    }))
-  } else if (filterSubscribeStatus.value === 'unsubscribed') {
-    list = list.map(w => ({
-      ...w,
-      items: (w.items || []).filter(it => !it.exists)
-    }))
-  }
-  const filtered = list.filter(w => w.items && w.items.length > 0)
-  return [...filtered].sort((a, b) => getWeekSortWeight(a.weekLabel) - getWeekSortWeight(b.weekLabel))
-})
-
-// 统计当前展示的番剧总数
-const totalAnimeCount = computed(() => {
-  return groupedAnimeList.value.reduce((acc, w) => acc + (w.items?.length || 0), 0)
-})
-
-// 可选星期分类导航胶囊：固定按照“全部、星期一、星期二、星期三、星期四、星期五、星期六、星期日”排序
-const availableWeeks = computed(() => {
-  const result = [{key: '全部', label: '全部', count: animeList.value.length}]
-  const weekItems = []
-  for (const w of (rawWeeksData.value || [])) {
-    const items = w.items || []
-    weekItems.push({
-      key: w.weekLabel,
-      label: w.weekLabel,
-      count: items.length
-    })
-  }
-  weekItems.sort((a, b) => getWeekSortWeight(a.label) - getWeekSortWeight(b.label))
-  return [...result, ...weekItems]
-})
-
-// 当前选中的字幕组对象
-const selectedGroup = computed(() => {
-  if (!currentGroups.value.length) return null
-  return currentGroups.value[activeGroupIndex.value] || null
-})
-
-// 当前字幕组可用的过滤规则选项
-const matchedRegexOptions = computed(() => {
-  if (!selectedGroup.value?.regexList) {
-    return []
-  }
-  const list = [...selectedGroup.value.regexList]
-  const hasEmpty = list.some(itemGroup => !itemGroup || !itemGroup.length)
-  if (!hasEmpty) {
-    list.push([])
-  }
-  return list.map(itemGroup => {
-    if (!itemGroup || !itemGroup.length) {
-      return {label: '全部资源 (不过滤)', value: JSON.stringify([])}
-    }
-    const label = itemGroup.map(it => it.label).join(' / ')
-    const value = JSON.stringify(itemGroup.map(it => it.regex))
-    return {label, value}
-  })
-})
-
 // 已订阅条目列表缓存
 const subscribedList = ref([])
 
@@ -1076,6 +1142,40 @@ const getAnimeSubscribedSubgroups = (anime) => {
   return Array.from(new Set(subgroups))
 }
 
+// 获取番剧当前下载的集数进度 (例如: "3 / 12" 或 "1 / *")
+const getAnimeProgress = (anime) => {
+  if (!anime?.exists) return ''
+  const matched = findMatchedSubscriptions(anime)
+  if (!matched.length) return ''
+  let best = matched[0]
+  for (const item of matched) {
+    if ((item.currentEpisodeNumber ?? 0) > (best.currentEpisodeNumber ?? 0)) {
+      best = item
+    }
+  }
+  const curr = best.currentEpisodeNumber ?? 0
+  const total = best.totalEpisodeNumber || '*'
+  return `${curr} / ${total}`
+}
+
+// 获取番剧订阅状态文字
+const getAnimeStatusText = (anime) => {
+  if (!anime?.exists) return '未订阅'
+  const matched = findMatchedSubscriptions(anime)
+  if (!matched.length) return '已订阅'
+  const allDisabled = matched.every(s => s.enabled === false)
+  return allDisabled ? '已禁用' : '已启用'
+}
+
+// 获取番剧订阅状态标签类型
+const getAnimeTagType = (anime) => {
+  if (!anime?.exists) return 'info'
+  const matched = findMatchedSubscriptions(anime)
+  if (!matched.length) return 'success'
+  const allDisabled = matched.every(s => s.enabled === false)
+  return allDisabled ? 'info' : 'success'
+}
+
 // 刷新当前所有已渲染番剧卡片的已订阅字幕组和状态
 const updateSubscribedInfoForAnimeList = () => {
   for (const item of animeList.value) {
@@ -1107,6 +1207,293 @@ const loadSubscribedList = async () => {
     updateSubscribedInfoForAnimeList()
   } catch (e) {
     console.error('加载订阅列表失败:', e)
+  }
+}
+
+// 按星期分组的番剧列表，支持星期筛选、关键词搜索与订阅状态过滤，且固定按星期顺序排序
+const groupedAnimeList = computed(() => {
+  let list = rawWeeksData.value || []
+  if (activeWeek.value !== '全部') {
+    list = list.filter(w => w.weekLabel === activeWeek.value)
+  }
+  if (searchKeyword.value.trim()) {
+    const kw = searchKeyword.value.trim().toLowerCase()
+    list = list.map(w => ({
+      ...w,
+      items: (w.items || []).filter(it => (it.title || '').toLowerCase().includes(kw))
+    }))
+  }
+  if (filterSubscribeStatus.value === 'subscribed') {
+    list = list.map(w => ({
+      ...w,
+      items: (w.items || []).filter(it => it.exists)
+    }))
+  } else if (filterSubscribeStatus.value === 'unsubscribed') {
+    list = list.map(w => ({
+      ...w,
+      items: (w.items || []).filter(it => !it.exists)
+    }))
+  } else if (filterSubscribeStatus.value === 'enabled') {
+    list = list.map(w => ({
+      ...w,
+      items: (w.items || []).filter(it => {
+        if (!it.exists) return false
+        const matched = findMatchedSubscriptions(it)
+        return matched.length > 0 && matched.some(s => s.enabled !== false)
+      })
+    }))
+  } else if (filterSubscribeStatus.value === 'disabled') {
+    list = list.map(w => ({
+      ...w,
+      items: (w.items || []).filter(it => {
+        if (!it.exists) return false
+        const matched = findMatchedSubscriptions(it)
+        return matched.length > 0 && matched.every(s => s.enabled === false)
+      })
+    }))
+  }
+  const filtered = list.filter(w => w.items && w.items.length > 0)
+  return [...filtered].sort((a, b) => getWeekSortWeight(a.weekLabel) - getWeekSortWeight(b.weekLabel))
+})
+
+// 统计当前展示的番剧总数
+const totalAnimeCount = computed(() => {
+  return groupedAnimeList.value.reduce((acc, w) => acc + (w.items?.length || 0), 0)
+})
+
+// 可选星期分类导航胶囊：固定按照“全部、星期一、星期二、星期三、星期四、星期五、星期六、星期日”排序
+const availableWeeks = computed(() => {
+  const result = [{key: '全部', label: '全部', count: animeList.value.length}]
+  const weekItems = []
+  for (const w of (rawWeeksData.value || [])) {
+    const items = w.items || []
+    weekItems.push({
+      key: w.weekLabel,
+      label: w.weekLabel,
+      count: items.length
+    })
+  }
+  weekItems.sort((a, b) => getWeekSortWeight(a.label) - getWeekSortWeight(b.label))
+  return [...result, ...weekItems]
+})
+
+// 当前选中的字幕组对象
+const selectedGroup = computed(() => {
+  if (!currentGroups.value.length) return null
+  return currentGroups.value[activeGroupIndex.value] || null
+})
+
+// 当前字幕组可用的过滤规则选项
+const matchedRegexOptions = computed(() => {
+  if (!selectedGroup.value?.regexList) {
+    return []
+  }
+  const list = [...selectedGroup.value.regexList]
+  const hasEmpty = list.some(itemGroup => !itemGroup || !itemGroup.length)
+  if (!hasEmpty) {
+    list.push([])
+  }
+  return list.map(itemGroup => {
+    if (!itemGroup || !itemGroup.length) {
+      return {label: '全部资源 (不过滤)', value: JSON.stringify([])}
+    }
+    const label = itemGroup.map(it => it.label).join(' / ')
+    const value = JSON.stringify(itemGroup.map(it => it.regex))
+    return {label, value}
+  })
+})
+
+// 点击封面弹出更换封面弹窗 (需求2)
+const handleCoverClick = (anime) => {
+  if (!anime) return
+  const matched = findMatchedSubscriptions(anime)
+  if (matched.length > 0) {
+    coverRef.value?.show(matched[0])
+  } else {
+    ElMessage.info('未订阅的番剧暂无本地记录，无法更换封面')
+  }
+}
+
+// 点击卡片或行 (需求2: 非管理模式下不触发任何弹窗; 管理模式下切换选择)
+const handleCardClick = (anime) => {
+  if (isManageMode.value) {
+    if (anime?.exists) {
+      toggleManageAnime(anime)
+    }
+  }
+}
+
+// 切换管理模式 (需求4)
+const toggleManageMode = () => {
+  isManageMode.value = !isManageMode.value
+  if (isManageMode.value) {
+    // 默认切换为列表布局
+    viewLayoutMode.value = 'list'
+    selectedManageIds.value = []
+  } else {
+    selectedManageIds.value = []
+  }
+}
+
+// 判断某番剧是否在管理多选中
+const isAnimeManageSelected = (anime) => {
+  if (!anime) return false
+  const animeId = anime.bgmId || anime.id
+  return selectedManageIds.value.includes(animeId)
+}
+
+// 切换单部番剧管理勾选
+const toggleManageAnime = (anime) => {
+  if (!anime?.exists) return
+  const animeId = anime.bgmId || anime.id
+  const idx = selectedManageIds.value.indexOf(animeId)
+  if (idx > -1) {
+    selectedManageIds.value.splice(idx, 1)
+  } else {
+    selectedManageIds.value.push(animeId)
+  }
+}
+
+// 判断某周内是否有已订阅的番剧
+const hasSubscribedInWeek = (weekGroup) => {
+  return (weekGroup.items || []).some(it => it.exists)
+}
+
+// 判断某周内所有已订阅番剧是否已全部勾选
+const isWeekManageAllSelected = (weekGroup) => {
+  const subscribedItems = (weekGroup.items || []).filter(it => it.exists)
+  if (!subscribedItems.length) return false
+  return subscribedItems.every(it => isAnimeManageSelected(it))
+}
+
+// 全选/取消全选某周内所有已订阅番剧
+const toggleSelectWeekManage = (weekGroup) => {
+  const subscribedItems = (weekGroup.items || []).filter(it => it.exists)
+  if (!subscribedItems.length) return
+  const allSelected = isWeekManageAllSelected(weekGroup)
+  for (const it of subscribedItems) {
+    const animeId = it.bgmId || it.id
+    const idx = selectedManageIds.value.indexOf(animeId)
+    if (allSelected) {
+      if (idx > -1) selectedManageIds.value.splice(idx, 1)
+    } else {
+      if (idx === -1) selectedManageIds.value.push(animeId)
+    }
+  }
+}
+
+// 清空当前管理选择
+const clearManageSelection = () => {
+  selectedManageIds.value = []
+}
+
+// 获取选中的所有已订阅实体条目
+const getSelectedSubscriptionItems = () => {
+  if (!selectedManageIds.value.length) return []
+  const result = []
+  for (const week of rawWeeksData.value || []) {
+    for (const anime of (week.items || [])) {
+      const animeId = anime.bgmId || anime.id
+      if (selectedManageIds.value.includes(animeId) && anime.exists) {
+        const matched = findMatchedSubscriptions(anime)
+        result.push(...matched)
+      }
+    }
+  }
+  const map = new Map()
+  for (const sub of result) {
+    if (sub.id && !map.has(sub.id)) {
+      map.set(sub.id, sub)
+    }
+  }
+  return Array.from(map.values())
+}
+
+// 统计选中的订阅总数
+const selectedSubCount = computed(() => {
+  return getSelectedSubscriptionItems().length
+})
+
+// 获取选中的订阅 ID 数组
+const getSelectedSubIds = () => {
+  return getSelectedSubscriptionItems().map(s => s.id)
+}
+
+// 批量 启用 / 禁用
+const handleBatchEnable = async (enable) => {
+  const ids = getSelectedSubIds()
+  if (!ids.length) {
+    ElMessage.warning('未选择已订阅的番剧')
+    return
+  }
+  manageActionLoading.value = true
+  try {
+    const res = await http.batchEnable(enable, ids)
+    ElMessage.success(res?.message || (enable ? '批量启用成功' : '批量禁用成功'))
+    window.$reLoadList?.()
+    await loadSubscribedList()
+  } catch (e) {
+    ElMessage.error((enable ? '批量启用失败: ' : '批量禁用失败: ') + (e.message || e))
+  } finally {
+    manageActionLoading.value = false
+  }
+}
+
+// 批量删除订阅（调 DelAniView 弹窗，支持联动删除本地文件）
+const handleBatchDelete = () => {
+  const items = getSelectedSubscriptionItems()
+  if (!items.length) {
+    ElMessage.warning('未选择已订阅的番剧')
+    return
+  }
+  delAniRef.value?.show(items)
+}
+
+// 删除订阅完成回调
+const handleDelSaved = async () => {
+  selectedManageIds.value = []
+  await loadSubscribedList()
+  updateSubscribedInfoForAnimeList()
+  window.$reLoadList?.()
+}
+
+// 更新总集数 / 强制更新总集数
+const handleUpdateTotalEpisode = async (force) => {
+  const ids = getSelectedSubIds()
+  if (!ids.length) {
+    ElMessage.warning('未选择已订阅的番剧')
+    return
+  }
+  manageActionLoading.value = true
+  try {
+    const res = await http.updateTotalEpisodeNumber(force, ids)
+    ElMessage.success(res?.message || (force ? '已触发强制更新总集数' : '已触发更新总集数'))
+    window.$reLoadList?.()
+    await loadSubscribedList()
+  } catch (e) {
+    ElMessage.error('更新总集数失败: ' + (e.message || e))
+  } finally {
+    manageActionLoading.value = false
+  }
+}
+
+// 批量刮削
+const handleBatchScrape = async () => {
+  const ids = getSelectedSubIds()
+  if (!ids.length) {
+    ElMessage.warning('未选择已订阅的番剧')
+    return
+  }
+  manageActionLoading.value = true
+  try {
+    const res = await http.batchScrape(false, ids)
+    ElMessage.success(res?.message || '已触发批量刮削任务')
+    window.$reLoadList?.()
+    await loadSubscribedList()
+  } catch (e) {
+    ElMessage.error('批量刮削失败: ' + (e.message || e))
+  } finally {
+    manageActionLoading.value = false
   }
 }
 
@@ -1945,6 +2332,12 @@ onActivated(() => {
   gap: 8px;
 }
 
+.week-select-all-btn {
+  margin-left: 8px;
+  font-size: 12px;
+  padding: 0 4px;
+}
+
 .week-count-tag {
   font-size: 13px;
   font-weight: normal;
@@ -1970,6 +2363,33 @@ onActivated(() => {
 
 .anime-grid-card-wrap {
   cursor: pointer;
+  position: relative;
+  transition: all 0.2s ease;
+  border-radius: var(--el-border-radius-base);
+}
+
+.anime-grid-card-wrap.is-manage-mode {
+  padding-left: 28px;
+}
+
+.card-manage-check {
+  position: absolute;
+  left: 6px;
+  top: 50%;
+  transform: translateY(-50%);
+  z-index: 2;
+  display: flex;
+  align-items: center;
+}
+
+.anime-grid-card-wrap.is-selected .anime-card-box {
+  border-color: var(--el-color-primary) !important;
+  background: var(--el-color-primary-light-9) !important;
+}
+
+.anime-grid-card-wrap.is-disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
 }
 
 .anime-card-box {
@@ -1983,6 +2403,16 @@ onActivated(() => {
   transform: translateY(-2px);
   box-shadow: 0 4px 14px rgba(0, 0, 0, 0.08);
   border-color: var(--el-color-primary-light-5);
+}
+
+.clickable-cover {
+  cursor: pointer;
+  transition: transform 0.2s cubic-bezier(0.4, 0, 0.2, 1), filter 0.2s ease;
+}
+
+.clickable-cover:hover {
+  transform: scale(1.04);
+  filter: brightness(1.06);
 }
 
 /* 卡片内部结构（与 AniCardView 一致） */
@@ -2102,6 +2532,11 @@ onActivated(() => {
   margin-top: 2px;
 }
 
+.card-progress-tag {
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+
 .card-subgroup-tag {
   max-width: 140px;
   overflow: hidden;
@@ -2139,9 +2574,32 @@ onActivated(() => {
 .anime-list-item-wrap {
   cursor: pointer;
   width: 100%;
+  position: relative;
+  display: flex;
+  align-items: center;
+  transition: all 0.2s ease;
+}
+
+.list-row-manage-check {
+  margin-right: 12px;
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+}
+
+.anime-list-item-wrap.is-selected .anime-row-card-box {
+  border-color: var(--el-color-primary) !important;
+  background: var(--el-color-primary-light-9) !important;
+}
+
+.anime-list-item-wrap.is-disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
 }
 
 .anime-row-card-box {
+  flex: 1;
+  min-width: 0;
   border-radius: 8px;
   background: var(--el-bg-color);
   border: 1px solid var(--el-border-color-lighter);
@@ -2274,6 +2732,64 @@ onActivated(() => {
   font-weight: 600;
   font-size: 13px;
   color: var(--el-text-color-primary);
+}
+
+/* ================= 管理模式底部悬浮工具栏 ================= */
+.manage-floating-bar {
+  position: fixed;
+  bottom: 24px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 2000;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 20px;
+  padding: 10px 22px;
+  background: var(--el-bg-color-overlay);
+  border: 1px solid var(--el-border-color-light);
+  border-radius: 40px;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.16), 0 2px 6px rgba(0, 0, 0, 0.06);
+  backdrop-filter: blur(12px);
+  animation: manageFloatUp 0.25s cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+
+@keyframes manageFloatUp {
+  from {
+    opacity: 0;
+    transform: translate(-50%, 20px);
+  }
+  to {
+    opacity: 1;
+    transform: translate(-50%, 0);
+  }
+}
+
+.manage-floating-info {
+  font-size: 13px;
+  color: var(--el-text-color-regular);
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  white-space: nowrap;
+}
+
+.manage-floating-info strong {
+  color: var(--el-color-primary);
+  font-size: 15px;
+  font-weight: 700;
+}
+
+.manage-sub-count {
+  color: var(--el-text-color-secondary);
+  font-size: 12px;
+}
+
+.manage-floating-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
 }
 
 .empty-anime {

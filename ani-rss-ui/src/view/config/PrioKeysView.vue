@@ -18,7 +18,7 @@
       </el-tag>
       <el-tag v-for="(tag, index) in props.keywords" :key="tag" closable :disable-translations="false"
               @close="handleClose(index)" class="prio-keys-tag">
-        <el-tooltip :content="`优先级: ${index + 1}`">
+        <el-tooltip :show-after="300"  :content="`优先级: ${index + 1}`">
           <el-text line-clamp="1" size="small" class="prio-keys-tag-text">
             {{ tag }}
           </el-text>

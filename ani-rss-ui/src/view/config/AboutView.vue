@@ -4,7 +4,7 @@
       <img alt="icon.svg" height="80" src="/public/icon.svg" width="80"/>
       <div>
         <h1>ANI-RSS</h1>
-        <el-tooltip
+        <el-tooltip :show-after="300" :show-after="300"
             :content="`${props.config.gitInfo.branch} ${props.config.gitInfo.shortCommitId}`"
             placement="right">
           <el-text class="mx-1 cursor-pointer" size="small">

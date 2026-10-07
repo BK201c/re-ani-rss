@@ -43,7 +43,7 @@
                 </el-dropdown-menu>
               </template>
             </el-dropdown>
-            <el-tooltip :content="sortOrder === 'asc' ? '正序' : '倒序'" placement="top">
+            <el-tooltip :show-after="300" :content="sortOrder === 'asc' ? '正序' : '倒序'" placement="top">
               <el-button
                   :aria-label="sortOrder === 'asc' ? '正序' : '倒序'"
                   class="sort-order-button"

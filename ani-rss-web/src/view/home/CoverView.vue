@@ -29,7 +29,7 @@
             </el-icon>
           </div>
         </div>
-        <el-tooltip :content="ani.title" placement="bottom">
+        <el-tooltip :show-after="300" :content="ani.title" placement="bottom">
           <el-text class="cover-anime-title" truncated>{{ ani.title }}</el-text>
         </el-tooltip>
       </div>
@@ -49,7 +49,7 @@
                 clearable
                 placeholder="https://lain.bgm.tv/pic/cover/1234.jpg"
                 @keyup.enter="refreshCover"/>
-            <el-tooltip content="获取封面" placement="top">
+            <el-tooltip :show-after="300" content="获取封面" placement="top">
               <el-button
                   :disabled="!ani.image"
                   :loading="refreshLoading"

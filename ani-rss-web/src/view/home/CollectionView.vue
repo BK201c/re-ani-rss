@@ -135,7 +135,7 @@
               </el-form-item>
               <el-form-item label="Torrent">
                 <el-tag v-if="data.filename" closable @close="clearTorrent">
-                  <el-tooltip :content="data.filename">
+                  <el-tooltip :show-after="300" :content="data.filename">
                     <el-text line-clamp="1" size="small" class="filename">
                       {{ data.filename }}
                     </el-text>
