@@ -51,7 +51,7 @@
     <!-- 统一页面头部 -->
     <PageHeaderView
         title="RSS"
-        :subtitle="`${selectedSeason || '季度番剧'} · 共 ${totalAnimeCount} 部番剧`"
+        :subtitle="`${selectedSeason === 'all' ? '全部季度' : (selectedSeason || '季度番剧')} · 共 ${totalAnimeCount} 部番剧`"
     />
 
     <div class="add-sub-body app-page-content app-page-padding">
@@ -74,50 +74,53 @@
               </template>
             </el-input>
 
-            <el-select
-                v-if="seasons.length"
-                v-model="selectedSeason"
-                class="subscription-select season-select"
-                placeholder="选择季度"
-                :disabled="animeListLoading"
-                @change="handleSeasonChange">
-              <el-option
-                  v-for="s in seasons"
-                  :key="s.value"
-                  :label="s.label"
-                  :value="s.value"
-              />
-            </el-select>
+            <div class="subscription-filter-controls">
+              <el-select
+                  v-if="seasons.length"
+                  v-model="selectedSeason"
+                  class="subscription-select season-select"
+                  placeholder="选择季度"
+                  :disabled="animeListLoading"
+                  @change="handleSeasonChange">
+                <el-option label="全部" value="all"/>
+                <el-option
+                    v-for="s in seasons"
+                    :key="s.value"
+                    :label="s.label"
+                    :value="s.value"
+                />
+              </el-select>
 
-            <el-select
-                v-model="filterSubscribeStatus"
-                class="subscription-select status-select"
-                placeholder="订阅状态">
-              <el-option label="全部状态" value="all"/>
-              <el-option label="仅未订阅" value="unsubscribed"/>
-              <el-option label="仅已订阅" value="subscribed"/>
-              <el-option label="已订阅 · 已启用" value="enabled"/>
-              <el-option label="已订阅 · 已禁用" value="disabled"/>
-            </el-select>
+              <el-select
+                  v-model="filterSubscribeStatus"
+                  class="subscription-select status-select"
+                  placeholder="订阅状态">
+                <el-option label="全部状态" value="all"/>
+                <el-option label="仅未订阅" value="unsubscribed"/>
+                <el-option label="仅已订阅" value="subscribed"/>
+                <el-option label="已订阅 · 已启用" value="enabled"/>
+                <el-option label="已订阅 · 已禁用" value="disabled"/>
+              </el-select>
 
-            <el-radio-group
-                v-model="viewLayoutMode"
-                class="layout-switch-group">
-              <el-radio-button value="card">
-                <el-tooltip :show-after="300" content="卡片布局" placement="top">
-                  <div class="layout-toggle-item">
-                    <el-icon><Grid /></el-icon>
-                  </div>
-                </el-tooltip>
-              </el-radio-button>
-              <el-radio-button value="list">
-                <el-tooltip :show-after="300" content="列表布局" placement="top">
-                  <div class="layout-toggle-item">
-                    <el-icon><List /></el-icon>
-                  </div>
-                </el-tooltip>
-              </el-radio-button>
-            </el-radio-group>
+              <el-radio-group
+                  v-model="viewLayoutMode"
+                  class="layout-switch-group">
+                <el-radio-button value="card">
+                  <el-tooltip :show-after="300" content="卡片布局" placement="top">
+                    <div class="layout-toggle-item">
+                      <el-icon><Grid /></el-icon>
+                    </div>
+                  </el-tooltip>
+                </el-radio-button>
+                <el-radio-button value="list">
+                  <el-tooltip :show-after="300" content="列表布局" placement="top">
+                    <div class="layout-toggle-item">
+                      <el-icon><List /></el-icon>
+                    </div>
+                  </el-tooltip>
+                </el-radio-button>
+              </el-radio-group>
+            </div>
           </div>
 
           <div class="subscription-actions">
@@ -526,7 +529,7 @@
           <div v-else class="batch-cart-empty">
             <el-empty description="待订阅清单为空">
               <template #extra>
-                <span class="empty-tip">在番剧卡片中点击「订阅」，选择站点与字幕组后点击「加入待订阅」即可添加到清单</span>
+                <span class="empty-tip">在番剧卡片中点击「订阅」，选择站点与字幕组后点击「待订阅」即可添加到清单</span>
               </template>
             </el-empty>
           </div>
@@ -797,7 +800,7 @@
                     icon="FolderAdd"
                     class="add-cart-btn"
                     @click="addToBatchCart">
-                  加入待订阅
+                  待订阅
                 </el-button>
 
                 <el-button
@@ -807,7 +810,7 @@
                     class="quick-subscribe-btn"
                     :loading="subscribingLoading"
                     @click="subscribeCurrentGroup">
-                  订阅此字幕组
+                  订阅此组
                 </el-button>
               </div>
             </div>
@@ -935,6 +938,7 @@ import BgmView from "@/view/home/BgmView.vue";
 import PageHeaderView from "@/view/custom/PageHeaderView.vue";
 import {aniData} from "@/js/ani.js";
 import {proxyImage} from "@/js/global.js";
+import {fromNow} from "@/js/format.js";
 import * as http from "@/js/http.js";
 
 import mikanIcon from "@/icon/icon-Mikan.png";
@@ -980,9 +984,9 @@ const openBatchCartDialog = () => {
 
 // 弹窗内部支持的 RSS 下载数据源
 const dialogSourceList = [
-  {key: 'mikan', label: '蜜柑 Mikan', icon: mikanIcon},
+  {key: 'mikan', label: 'Mikan', icon: mikanIcon},
   {key: 'ani-bt', label: 'AniBT', icon: aniBTIcon},
-  {key: 'anime-garden', label: '动漫花园', icon: animeGardenIcon}
+  {key: 'anime-garden', label: 'Dmhy', icon: animeGardenIcon}
 ]
 const activeDialogSource = ref('mikan') // 弹窗内当前选中的下载源，默认 Mikan
 
@@ -1036,6 +1040,7 @@ const getWeekSortWeight = (label) => {
 
 // 权威番剧数据状态 (bgm.tv 季度数据源)
 const seasons = ref([])
+const allAvailableSeasons = ref([])
 const selectedSeason = ref('')
 const searchKeyword = ref('')
 const activeWeek = ref(getTodayWeekLabel())
@@ -1682,13 +1687,23 @@ const normalizeGroup = (group, source) => {
   const label = group.label || group.name || '未知字幕组'
   const tags = group.groupRegex?.tags || []
   const regexList = group.groupRegex?.regexList || []
-  const items = (group.items || []).map(ti => ({
-    title: ti.title,
-    size: ti.formatSize || ti.size || '--',
-    date: ti.createdAt || ti.publishedAt || '--',
-    magnet: ti.magnet || '',
-    torrent: ti.torrent || ''
-  }))
+  const items = (group.items || []).map(ti => {
+    let rawDate = ti.createdAt || ti.publishedAt || '--'
+    let formattedDate = rawDate
+    if (rawDate !== '--') {
+      const num = Number(rawDate)
+      if (!isNaN(num) && num > 100000000000) {
+        formattedDate = fromNow(num)
+      }
+    }
+    return {
+      title: ti.title,
+      size: ti.formatSize || ti.size || '--',
+      date: formattedDate,
+      magnet: ti.magnet || '',
+      torrent: ti.torrent || ''
+    }
+  })
   let bgmUrl = group.bgmUrl || ''
   if (!bgmUrl && group.bgmId) {
     bgmUrl = `https://bgm.tv/subject/${group.bgmId}`
@@ -1742,33 +1757,40 @@ const setSeasonCache = (seasonKey, data) => {
   }
 }
 
+const syncSeasonCacheByKey = (key) => {
+  const currentCache = getSeasonCache(key)
+  if (currentCache?.data?.byWeekday) {
+    let changed = false
+    for (const week of currentCache.data.byWeekday) {
+      for (const anime of (week.animes || [])) {
+        const bgmId = String(anime.bgmId || '')
+        let title = ''
+        if (typeof anime.title === 'object' && anime.title !== null) {
+          title = anime.title.chinese || anime.title.primary || ''
+        } else {
+          title = anime.title || ''
+        }
+        const matched = findMatchedSubscriptions({ rawId: bgmId, bgmId, title, raw: anime })
+        const newExists = matched.length > 0
+        if (anime.exists !== newExists) {
+          anime.exists = newExists
+          changed = true
+        }
+      }
+    }
+    if (changed) {
+      setSeasonCache(key, currentCache.data)
+    }
+  }
+}
+
 // 同步当前季度本地缓存中的订阅存在状态
 const syncCurrentSeasonCache = () => {
   try {
     const seasonKey = selectedSeason.value || ''
-    const currentCache = getSeasonCache(seasonKey)
-    if (currentCache?.data?.byWeekday) {
-      let changed = false
-      for (const week of currentCache.data.byWeekday) {
-        for (const anime of (week.animes || [])) {
-          const bgmId = String(anime.bgmId || '')
-          let title = ''
-          if (typeof anime.title === 'object' && anime.title !== null) {
-            title = anime.title.chinese || anime.title.primary || ''
-          } else {
-            title = anime.title || ''
-          }
-          const matched = findMatchedSubscriptions({ rawId: bgmId, bgmId, title, raw: anime })
-          const newExists = matched.length > 0
-          if (anime.exists !== newExists) {
-            anime.exists = newExists
-            changed = true
-          }
-        }
-      }
-      if (changed) {
-        setSeasonCache(seasonKey, currentCache.data)
-      }
+    syncSeasonCacheByKey(seasonKey)
+    if (seasonKey !== 'all') {
+      syncSeasonCacheByKey('all')
     }
   } catch (e) {
     console.warn('同步本地缓存订阅状态失败:', e)
@@ -1779,6 +1801,7 @@ const applySeasonData = (data) => {
   const { requestedSeason, availableSeasons, byWeekday } = data || {}
 
   if (availableSeasons?.length) {
+    allAvailableSeasons.value = [...availableSeasons]
     seasons.value = availableSeasons.map(s => ({
       label: s,
       value: s,
@@ -1797,6 +1820,55 @@ const applySeasonData = (data) => {
   updateSubscribedInfoForAnimeList()
 }
 
+// 合并多季度番剧数据（去除重复番剧并按星期分组）
+const mergeSeasonsData = (seasonDataList, allSeasonNames) => {
+  const weekdayMap = new Map()
+  const seenBgmIds = new Set()
+
+  for (const sData of seasonDataList) {
+    if (!sData?.byWeekday) continue
+    for (const w of sData.byWeekday) {
+      const wLabel = normalizeWeekLabel(w.weekdayLabel || (w.weekday ? `星期${w.weekday}` : ''))
+      if (!weekdayMap.has(wLabel)) {
+        weekdayMap.set(wLabel, {
+          weekday: w.weekday,
+          weekdayLabel: w.weekdayLabel || wLabel,
+          animes: []
+        })
+      }
+      const wGroup = weekdayMap.get(wLabel)
+      for (const anime of (w.animes || [])) {
+        const idKey = String(anime.bgmId || anime.id || anime.title || '')
+        if (idKey && seenBgmIds.has(idKey)) continue
+        if (idKey) seenBgmIds.add(idKey)
+        wGroup.animes.push(anime)
+      }
+    }
+  }
+
+  // 星期内按评分倒序
+  for (const wGroup of weekdayMap.values()) {
+    wGroup.animes.sort((a, b) => {
+      const scoreA = Number(a.score || a.rating || 0)
+      const scoreB = Number(b.score || b.rating || 0)
+      return scoreB - scoreA
+    })
+  }
+
+  // 星期按标准周一至周日排序
+  const byWeekday = Array.from(weekdayMap.values()).sort((a, b) => {
+    const orderA = WEEK_ORDER_MAP[normalizeWeekLabel(a.weekdayLabel)] ?? 99
+    const orderB = WEEK_ORDER_MAP[normalizeWeekLabel(b.weekdayLabel)] ?? 99
+    return orderA - orderB
+  })
+
+  return {
+    requestedSeason: 'all',
+    availableSeasons: allSeasonNames,
+    byWeekday
+  }
+}
+
 // 加载权威季度番剧数据 (使用 bgm.tv 季度列表作为唯一权威数据源，未超24小时直接复用缓存)
 const loadAuthorityData = async (keyword = '', seasonParam = null, forceRefresh = false) => {
   animeListError.value = ''
@@ -1808,9 +1880,71 @@ const loadAuthorityData = async (keyword = '', seasonParam = null, forceRefresh 
   }
 
   const isSeasonQuery = !keyword
-  const targetSeason = keyword ? '' : (seasonParam || selectedSeason.value || '')
+  const targetSeason = keyword ? '' : (seasonParam !== null ? seasonParam : (selectedSeason.value || ''))
 
-  // 1. 若为季度常规加载且非强制刷新：检查是否存在 24 小时内的本地缓存
+  // 1. 若为“全部”季度查询
+  if (isSeasonQuery && targetSeason === 'all') {
+    if (!forceRefresh) {
+      const cached = getSeasonCache('all')
+      if (cached?.data?.byWeekday) {
+        applySeasonData(cached.data)
+        animeListLoading.value = false
+        return
+      }
+    }
+
+    animeListLoading.value = true
+    try {
+      let seasonNames = allAvailableSeasons.value || []
+      if (!seasonNames.length && seasons.value.length) {
+        seasonNames = seasons.value.map(s => s.value).filter(s => s !== 'all')
+      }
+      if (!seasonNames.length) {
+        const initRes = await http.aniBT('', '', '', forceRefresh)
+        const initData = initRes.data || {}
+        if (initData.availableSeasons?.length) {
+          seasonNames = initData.availableSeasons
+          allAvailableSeasons.value = seasonNames
+        }
+      }
+
+      // 并行获取各可用季度数据（优先使用24小时本地缓存）
+      const seasonDataList = await Promise.all(
+        seasonNames.map(async (s) => {
+          if (!forceRefresh) {
+            const cachedSeason = getSeasonCache(s)
+            if (cachedSeason?.data?.byWeekday) {
+              return cachedSeason.data
+            }
+          }
+          try {
+            const res = await http.aniBT(s, '', '', forceRefresh)
+            const sData = res.data || {}
+            if (sData.byWeekday) {
+              setSeasonCache(s, sData)
+            }
+            return sData
+          } catch (err) {
+            console.warn(`加载季度 ${s} 失败:`, err)
+            return null
+          }
+        })
+      )
+
+      const mergedData = mergeSeasonsData(seasonDataList.filter(Boolean), seasonNames)
+      applySeasonData(mergedData)
+      setSeasonCache('all', mergedData)
+    } catch (e) {
+      const errorMsg = e.message || String(e) || '加载全部季度失败'
+      animeListError.value = `加载番剧列表失败: ${errorMsg}`
+      ElMessage.error(animeListError.value)
+    } finally {
+      animeListLoading.value = false
+    }
+    return
+  }
+
+  // 2. 若为常规单季度加载且非强制刷新：检查是否存在 24 小时内的本地缓存
   if (isSeasonQuery && !forceRefresh) {
     const cached = getSeasonCache(targetSeason)
     if (cached) {
@@ -1820,7 +1954,7 @@ const loadAuthorityData = async (keyword = '', seasonParam = null, forceRefresh 
     }
   }
 
-  // 2. 缓存不存在、已超24小时或用户主动强制刷新：发起请求获取最新数据
+  // 3. 缓存不存在、已超24小时或用户主动强制刷新：发起请求获取最新数据
   animeListLoading.value = true
   try {
     const res = await http.aniBT(targetSeason, '', keyword, forceRefresh)
@@ -1884,7 +2018,7 @@ const openAnimeDialog = async (anime) => {
   await switchDialogSource('mikan')
 }
 
-// 弹窗内切换下载数据源 (Mikan / AniBT / 动漫花园)
+// 弹窗内切换下载数据源 (Mikan / AniBT / Dmhy)
 const switchDialogSource = async (sourceKey) => {
   activeDialogSource.value = sourceKey
   activeGroupIndex.value = 0
@@ -1978,7 +2112,7 @@ const fetchSubgroupsForSource = async (sourceKey, anime) => {
     return rawList.map(grp => normalizeGroup(grp, 'ani-bt'))
 
   } else if (sourceKey === 'anime-garden') {
-    // 动漫花园：直接根据权威 bgmId 获取
+    // Dmhy：直接根据权威 bgmId 获取
     const res = await http.animeGardenGroup(anime.bgmId)
     const rawList = res?.data || []
     return rawList.map(grp => normalizeGroup(grp, 'anime-garden'))
@@ -2310,8 +2444,23 @@ onActivated(() => {
   flex-wrap: wrap;
 }
 
+.subscription-filter-controls {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+}
+
 .subscription-actions {
   flex-shrink: 0;
+}
+
+.subscription-actions > * {
+  margin: 0 !important;
+}
+
+.subscription-actions :deep(.el-button) {
+  margin: 0 !important;
 }
 
 .subscription-search {
@@ -2419,8 +2568,205 @@ onActivated(() => {
 }
 
 @media (max-width: 800px) {
+  .subscription-toolbar {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 8px;
+    padding-bottom: 8px;
+  }
+
+  .subscription-filters {
+    width: 100%;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+  }
+
+  .subscription-search {
+    width: 100%;
+  }
+
+  .subscription-filter-controls {
+    width: 100%;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+
+  .subscription-filter-controls .subscription-select {
+    flex: 1;
+    min-width: 0;
+    width: auto;
+  }
+
+  .subscription-filter-controls .layout-switch-group {
+    flex-shrink: 0;
+    margin-left: 0;
+  }
+
+  .subscription-actions {
+    width: 100%;
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    overflow-x: auto;
+    padding: 2px 0 4px 0;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none;
+  }
+
+  .subscription-actions::-webkit-scrollbar {
+    display: none;
+  }
+
+  .subscription-actions :deep(.el-button) {
+    margin: 0 !important;
+    flex-shrink: 0;
+    height: 30px;
+    padding: 0 7px;
+    font-size: 12px;
+  }
+
+  .subscription-actions :deep(.el-button .el-icon) {
+    margin-right: 3px;
+    font-size: 13px;
+  }
+
+  .subscription-actions :deep(.el-button span) {
+    display: inline !important;
+  }
+
+  .week-pills-bar {
+    scrollbar-width: none;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .week-pills-bar::-webkit-scrollbar {
+    display: none;
+  }
+
   .card-grid-container {
     grid-template-columns: 1fr;
+  }
+
+  .manage-floating-bar {
+    bottom: calc(66px + env(safe-area-inset-bottom, 0px));
+    width: calc(100% - 24px);
+    max-width: 440px;
+    border-radius: 16px;
+    padding: 10px 14px;
+    gap: 8px;
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .manage-floating-info {
+    justify-content: center;
+  }
+
+  .manage-floating-actions {
+    justify-content: center;
+    gap: 6px;
+  }
+
+  .manage-floating-actions :deep(.el-button) {
+    margin: 0 !important;
+    padding: 0 8px;
+    font-size: 12px;
+    height: 28px;
+  }
+
+  /* ================= 字幕组弹窗移动端适配 ================= */
+  .anime-group-dialog :deep(.el-dialog__body) {
+    padding: 10px 12px 14px 12px;
+    height: auto;
+    max-height: 85vh;
+  }
+
+  .group-dialog-body {
+    height: auto;
+    max-height: calc(85vh - 24px);
+    min-height: 0;
+    gap: 8px;
+  }
+
+  .anime-dialog-header {
+    gap: 10px;
+    padding-bottom: 6px;
+  }
+
+  .anime-header-cover {
+    width: 38px;
+    height: 52px;
+  }
+
+  .anime-header-title {
+    font-size: 13px;
+  }
+
+  .anime-header-meta-row {
+    gap: 6px;
+  }
+
+  .anime-header-links {
+    margin-left: 0;
+    width: 100%;
+    margin-top: 2px;
+  }
+
+  .anime-header-links :deep(.el-button) {
+    height: 22px;
+    padding: 0 6px;
+    font-size: 11px;
+    margin: 0 !important;
+  }
+
+  .source-segmented-btn {
+    padding: 5px 6px;
+    font-size: 12px;
+    gap: 4px;
+  }
+
+  .subgroup-action-toolbar {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 8px;
+    padding: 8px 10px;
+  }
+
+  .subgroup-toolbar-left {
+    width: 100%;
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 6px;
+  }
+
+  .subgroup-toolbar-right {
+    width: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    gap: 6px;
+  }
+
+  .match-regex-select {
+    flex: 1;
+    min-width: 0;
+    width: auto;
+  }
+
+  .subgroup-toolbar-right :deep(.el-button) {
+    margin: 0 !important;
+    flex-shrink: 0;
+    height: 28px;
+    padding: 0 8px;
+    font-size: 12px;
+  }
+
+  .torrent-flat-item {
+    padding: 6px 8px;
+    gap: 8px;
   }
 }
 

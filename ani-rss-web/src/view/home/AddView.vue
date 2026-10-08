@@ -159,7 +159,7 @@ const rssSources = [
   },
   {
     name: 'anime-garden',
-    label: 'AnimeGarden',
+    label: 'Dmhy',
     icon: animeGardenIcon,
     placeholder: 'https://api.animes.garden/feed.xml?subject=xxx&fansub=xxx',
     open: () => animeGardenRef.value?.show()

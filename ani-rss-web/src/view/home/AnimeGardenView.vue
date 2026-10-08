@@ -34,7 +34,7 @@
       </el-button>
     </div>
   </el-dialog>
-  <el-dialog v-model="dialogVisible" center title="AnimeGarden">
+  <el-dialog v-model="dialogVisible" center title="Dmhy">
     <el-checkbox-group v-model="rssList">
       <div class="content-wrapper">
         <div class="search-section">
