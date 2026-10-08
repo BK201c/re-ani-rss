@@ -17,6 +17,10 @@ import io.swagger.v3.oas.annotations.Operation;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestParam;
+import ani.rss.entity.BgmSeason;
+import ani.rss.entity.dto.BgmSeasonQueryDTO;
+import ani.rss.service.BgmSeasonService;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.RestController;
 import wushuo.tmdb.api.entity.Tmdb;
 
@@ -25,6 +29,19 @@ import java.util.Map;
 
 @RestController
 public class BgmController extends BaseController {
+
+    @Autowired
+    private BgmSeasonService bgmSeasonService;
+
+    @Auth
+    @Operation(summary = "获取BGM权威季度番剧列表")
+    @PostMapping("/bgmSeason")
+    public Result<BgmSeason> bgmSeason(@RequestBody(required = false) BgmSeasonQueryDTO dto) {
+        if (dto == null) {
+            dto = new BgmSeasonQueryDTO();
+        }
+        return Result.success(bgmSeasonService.list(dto));
+    }
 
     @Auth
     @Operation(summary = "搜索BGM条目")

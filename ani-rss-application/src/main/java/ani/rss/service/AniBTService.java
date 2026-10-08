@@ -1,6 +1,5 @@
 package ani.rss.service;
 
-import ani.rss.cache.CacheUtils;
 import ani.rss.commons.FileUtils;
 import ani.rss.commons.GroupRegexUtils;
 import ani.rss.commons.GsonStatic;
@@ -20,7 +19,6 @@ import org.springframework.stereotype.Service;
 
 import java.util.Comparator;
 import java.util.List;
-import java.util.concurrent.TimeUnit;
 
 @Service
 public class AniBTService {
@@ -50,34 +48,16 @@ public class AniBTService {
             bgmId = "";
         }
 
-        boolean isSeasonQuery = StrUtil.isBlank(title) && StrUtil.isBlank(bgmUrl);
-        String cacheKey = "anibt:season:raw:" + StrUtil.blankToDefault(season, "current");
-
-        String rawData = null;
-        if (isSeasonQuery && !Boolean.TRUE.equals(dto.getRefresh())) {
-            rawData = CacheUtils.get(cacheKey);
-        }
-
-        if (rawData == null) {
-            final String finalSeason = season;
-            final String finalBgmId = bgmId;
-            rawData = HttpReq.get(HOST + "/api/seasons/anime")
-                    .form("season", finalSeason)
-                    .form("bgmId", finalBgmId)
-                    .form("query", title)
-                    .thenFunction(res -> {
-                        HttpReq.assertStatus(res);
-                        JsonObject jsonObject = GsonStatic.fromJson(res.body(), JsonObject.class);
-                        JsonObject data = jsonObject.getAsJsonObject("data");
-                        return data.toString();
-                    });
-
-            if (isSeasonQuery && StrUtil.isNotBlank(rawData)) {
-                CacheUtils.put(cacheKey, rawData, TimeUnit.HOURS.toMillis(24));
-            }
-        }
-
-        AniBT aniBT = GsonStatic.fromJson(rawData, AniBT.class);
+        AniBT aniBT = HttpReq.get(HOST + "/api/seasons/anime")
+                .form("season", season)
+                .form("bgmId", bgmId)
+                .form("query", title)
+                .thenFunction(res -> {
+                    HttpReq.assertStatus(res);
+                    JsonObject jsonObject = GsonStatic.fromJson(res.body(), JsonObject.class);
+                    JsonObject data = jsonObject.getAsJsonObject("data");
+                    return GsonStatic.fromJson(data, AniBT.class);
+                });
 
         List<AniBT.ByWeekday> byWeekday = aniBT.getByWeekday();
 

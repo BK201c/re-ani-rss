@@ -369,6 +369,19 @@ export let aniBT = (season, bgmUrl, text, refresh = false) => api.post('api/aniB
 })
 
 /**
+ * 获取bgm.tv权威季度番剧列表
+ * @param season 季度编号（如 202610 或 all）
+ * @param text 搜索标题
+ * @param refresh 是否强制刷新服务端缓存
+ * @returns {Promise<unknown>}
+ */
+export let bgmSeason = (season, text, refresh = false) => api.post('api/bgmSeason', {
+    season,
+    title: text,
+    refresh
+})
+
+/**
  * 删除缓存的种子
  * @param id 订阅id
  * @param hash 种子hash

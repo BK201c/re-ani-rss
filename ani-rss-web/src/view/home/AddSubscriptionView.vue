@@ -51,7 +51,7 @@
     <!-- 统一页面头部 -->
     <PageHeaderView
         title="RSS"
-        :subtitle="`${selectedSeason === 'all' ? '全部季度' : (selectedSeason || '季度番剧')} · 共 ${totalAnimeCount} 部番剧`"
+        :subtitle="`${selectedSeason === 'all' ? '全部' : formatSeasonTitle(selectedSeason)} · 共 ${totalAnimeCount} 部番剧`"
     />
 
     <div class="add-sub-body app-page-content app-page-padding">
@@ -79,7 +79,7 @@
                   v-if="seasons.length"
                   v-model="selectedSeason"
                   class="subscription-select season-select"
-                  placeholder="选择季度"
+                  placeholder="选择新番"
                   :disabled="animeListLoading"
                   @change="handleSeasonChange">
                 <el-option label="全部" value="all"/>
@@ -88,7 +88,12 @@
                     :key="s.value"
                     :label="s.label"
                     :value="s.value"
-                />
+                >
+                  <div class="season-option-item">
+                    <span>{{ s.label }}</span>
+                    <span v-if="s.desc" class="season-option-sub">{{ s.desc }}</span>
+                  </div>
+                </el-option>
               </el-select>
 
               <el-select
@@ -1200,7 +1205,6 @@ const updateSubscribedInfoForAnimeList = () => {
       }
     }
   }
-  syncCurrentSeasonCache()
 }
 
 // 加载系统中全部已订阅条目
@@ -1722,79 +1726,22 @@ const normalizeGroup = (group, source) => {
   }
 }
 
-// 季度番剧数据 24 小时本地缓存机制 (避免频繁抓取 bgm.tv 数据导致加载过慢)
-const SEASON_CACHE_PREFIX = 'ani_rss_season_cache_'
-const CACHE_TTL_MS = 24 * 60 * 60 * 1000 // 24小时
 
-const getSeasonCache = (seasonKey) => {
-  try {
-    const raw = localStorage.getItem(`${SEASON_CACHE_PREFIX}${seasonKey || 'default'}`)
-    if (!raw) return null
-    const parsed = JSON.parse(raw)
-    if (!parsed || !parsed.timestamp || !parsed.data) return null
-    if (Date.now() - parsed.timestamp > CACHE_TTL_MS) {
-      localStorage.removeItem(`${SEASON_CACHE_PREFIX}${seasonKey || 'default'}`)
-      return null
-    }
-    return parsed
-  } catch {
-    return null
+
+const formatSeasonDesc = (seasonKey) => {
+  const m = String(seasonKey || '').match(/^(\d{4})(01|04|07|10)$/)
+  if (m) {
+    const month = parseInt(m[2], 10)
+    return `${month}月新番`
   }
+  return ''
 }
 
-const setSeasonCache = (seasonKey, data) => {
-  try {
-    if (!data) return
-    const payload = {
-      timestamp: Date.now(),
-      season: seasonKey || '',
-      data
-    }
-    localStorage.setItem(`${SEASON_CACHE_PREFIX}${seasonKey || 'default'}`, JSON.stringify(payload))
-    localStorage.setItem(`${SEASON_CACHE_PREFIX}default`, JSON.stringify(payload))
-  } catch (e) {
-    console.warn('保存番剧缓存失败:', e)
-  }
-}
-
-const syncSeasonCacheByKey = (key) => {
-  const currentCache = getSeasonCache(key)
-  if (currentCache?.data?.byWeekday) {
-    let changed = false
-    for (const week of currentCache.data.byWeekday) {
-      for (const anime of (week.animes || [])) {
-        const bgmId = String(anime.bgmId || '')
-        let title = ''
-        if (typeof anime.title === 'object' && anime.title !== null) {
-          title = anime.title.chinese || anime.title.primary || ''
-        } else {
-          title = anime.title || ''
-        }
-        const matched = findMatchedSubscriptions({ rawId: bgmId, bgmId, title, raw: anime })
-        const newExists = matched.length > 0
-        if (anime.exists !== newExists) {
-          anime.exists = newExists
-          changed = true
-        }
-      }
-    }
-    if (changed) {
-      setSeasonCache(key, currentCache.data)
-    }
-  }
-}
-
-// 同步当前季度本地缓存中的订阅存在状态
-const syncCurrentSeasonCache = () => {
-  try {
-    const seasonKey = selectedSeason.value || ''
-    syncSeasonCacheByKey(seasonKey)
-    if (seasonKey !== 'all') {
-      syncSeasonCacheByKey('all')
-    }
-  } catch (e) {
-    console.warn('同步本地缓存订阅状态失败:', e)
-  }
+const formatSeasonTitle = (seasonKey) => {
+  if (!seasonKey) return '新番'
+  if (seasonKey === 'all') return '全部'
+  const desc = formatSeasonDesc(seasonKey)
+  return desc ? `${seasonKey} (${desc})` : seasonKey
 }
 
 const applySeasonData = (data) => {
@@ -1805,6 +1752,7 @@ const applySeasonData = (data) => {
     seasons.value = availableSeasons.map(s => ({
       label: s,
       value: s,
+      desc: formatSeasonDesc(s),
       raw: s
     }))
   }
@@ -1869,7 +1817,7 @@ const mergeSeasonsData = (seasonDataList, allSeasonNames) => {
   }
 }
 
-// 加载权威季度番剧数据 (使用 bgm.tv 季度列表作为唯一权威数据源，未超24小时直接复用缓存)
+// 加载权威季度番剧数据 (直接向后端 api/bgmSeason 接口请求，由后端负责对上游 bgm.tv 数据实施 24 小时缓存保护)
 const loadAuthorityData = async (keyword = '', seasonParam = null, forceRefresh = false) => {
   animeListError.value = ''
   selectedAnime.value = null
@@ -1882,17 +1830,8 @@ const loadAuthorityData = async (keyword = '', seasonParam = null, forceRefresh 
   const isSeasonQuery = !keyword
   const targetSeason = keyword ? '' : (seasonParam !== null ? seasonParam : (selectedSeason.value || ''))
 
-  // 1. 若为“全部”季度查询
+  // 1. 若为“全部”季度查询：并行向后端拉取所有可用季度并合并
   if (isSeasonQuery && targetSeason === 'all') {
-    if (!forceRefresh) {
-      const cached = getSeasonCache('all')
-      if (cached?.data?.byWeekday) {
-        applySeasonData(cached.data)
-        animeListLoading.value = false
-        return
-      }
-    }
-
     animeListLoading.value = true
     try {
       let seasonNames = allAvailableSeasons.value || []
@@ -1900,30 +1839,20 @@ const loadAuthorityData = async (keyword = '', seasonParam = null, forceRefresh 
         seasonNames = seasons.value.map(s => s.value).filter(s => s !== 'all')
       }
       if (!seasonNames.length) {
-        const initRes = await http.aniBT('', '', '', forceRefresh)
-        const initData = initRes.data || {}
+        const initRes = await http.bgmSeason('', '', forceRefresh)
+        const initData = initRes?.data || {}
         if (initData.availableSeasons?.length) {
           seasonNames = initData.availableSeasons
           allAvailableSeasons.value = seasonNames
         }
       }
 
-      // 并行获取各可用季度数据（优先使用24小时本地缓存）
+      // 并行请求后端获取各可用季度数据
       const seasonDataList = await Promise.all(
         seasonNames.map(async (s) => {
-          if (!forceRefresh) {
-            const cachedSeason = getSeasonCache(s)
-            if (cachedSeason?.data?.byWeekday) {
-              return cachedSeason.data
-            }
-          }
           try {
-            const res = await http.aniBT(s, '', '', forceRefresh)
-            const sData = res.data || {}
-            if (sData.byWeekday) {
-              setSeasonCache(s, sData)
-            }
-            return sData
+            const res = await http.bgmSeason(s, '', forceRefresh)
+            return res?.data || null
           } catch (err) {
             console.warn(`加载季度 ${s} 失败:`, err)
             return null
@@ -1933,7 +1862,6 @@ const loadAuthorityData = async (keyword = '', seasonParam = null, forceRefresh 
 
       const mergedData = mergeSeasonsData(seasonDataList.filter(Boolean), seasonNames)
       applySeasonData(mergedData)
-      setSeasonCache('all', mergedData)
     } catch (e) {
       const errorMsg = e.message || String(e) || '加载全部季度失败'
       animeListError.value = `加载番剧列表失败: ${errorMsg}`
@@ -1944,27 +1872,12 @@ const loadAuthorityData = async (keyword = '', seasonParam = null, forceRefresh 
     return
   }
 
-  // 2. 若为常规单季度加载且非强制刷新：检查是否存在 24 小时内的本地缓存
-  if (isSeasonQuery && !forceRefresh) {
-    const cached = getSeasonCache(targetSeason)
-    if (cached) {
-      applySeasonData(cached.data)
-      animeListLoading.value = false
-      return
-    }
-  }
-
-  // 3. 缓存不存在、已超24小时或用户主动强制刷新：发起请求获取最新数据
+  // 2. 常规单季度加载或关键词搜索：直接向后端发起请求
   animeListLoading.value = true
   try {
-    const res = await http.aniBT(targetSeason, '', keyword, forceRefresh)
-    const data = res.data || {}
+    const res = await http.bgmSeason(targetSeason, keyword, forceRefresh)
+    const data = res?.data || {}
     applySeasonData(data)
-
-    // 针对非搜索查询保存 24 小时缓存
-    if (isSeasonQuery && data.byWeekday) {
-      setSeasonCache(targetSeason || data.requestedSeason, data)
-    }
   } catch (e) {
     const errorMsg = e.message || String(e) || '加载失败'
     animeListError.value = `加载番剧列表失败: ${errorMsg}`
@@ -2380,6 +2293,11 @@ const openExternal = (url) => {
 }
 
 onMounted(() => {
+  try {
+    Object.keys(localStorage)
+      .filter(k => k.startsWith('ani_rss_season_cache_'))
+      .forEach(k => localStorage.removeItem(k))
+  } catch {}
   loadSubscribedList().then(() => {
     loadAuthorityData()
   })
@@ -2469,6 +2387,19 @@ onActivated(() => {
 
 .subscription-select {
   width: 130px;
+}
+
+.season-option-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  width: 100%;
+}
+
+.season-option-sub {
+  color: var(--el-text-color-secondary);
+  font-size: 12px;
+  margin-left: 12px;
 }
 
 .source-select {
