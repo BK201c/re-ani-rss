@@ -52,12 +52,6 @@
       <el-option value="DOWNLOAD_TIME" label="更新时间"/>
     </el-select>
   </SettingsItem>
-  <SettingsItem label="订阅布局">
-    <el-select v-model="subscriptionViewMode" class="width-150">
-      <el-option label="封面" value="cover"/>
-      <el-option label="卡片" value="card"/>
-    </el-select>
-  </SettingsItem>
   <SettingsItem label="点击封面">
     <el-select v-model="coverClickAction" class="width-150">
       <el-option label="编辑订阅" value="edit"/>
@@ -117,7 +111,6 @@ import {
   showWeek,
   startupPage,
   store,
-  subscriptionViewMode
 } from "@/js/global.js";
 import {ElMessage} from "element-plus";
 import UploadView from "@/view/custom/UploadView.vue";

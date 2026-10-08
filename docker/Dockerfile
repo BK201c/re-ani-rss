@@ -1,6 +1,5 @@
-FROM eclipse-temurin:26-jre-alpine
+FROM wushuo894/eclipse-temurin:27-jre-alpine
 
-RUN apk add --no-cache su-exec tzdata
 
 COPY docker/run.sh /run.sh
 COPY docker/exec.sh /exec.sh

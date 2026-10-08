@@ -11,10 +11,9 @@
             <h2 class="list-week-title">
               {{ weekItem.weekLabel }}
             </h2>
-            <div :class="gridClass">
+            <div class="grid-container cover-grid-container">
               <div v-for="item in weekItem.items" :key="item.id">
-                <component
-                    :is="viewComponent"
+                <AniCoverView
                     :item="item"
                     @edit="editAniRef?.show"
                     @cover="coverRef?.show"
@@ -26,10 +25,9 @@
           </div>
         </template>
         <template v-else>
-          <div :class="gridClass">
+          <div class="grid-container cover-grid-container">
             <div v-for="item in flatFilterList" :key="item.id">
-              <component
-                  :is="viewComponent"
+              <AniCoverView
                   :item="item"
                   @edit="editAniRef?.show"
                   @cover="coverRef?.show"
@@ -46,24 +44,19 @@
 </template>
 
 <script setup>
-import {computed, onMounted, ref} from "vue";
+import {onMounted, ref} from "vue";
 import EditAniView from "./EditAniView.vue";
 import CoverView from "./CoverView.vue";
 import DelAniView from "./DelAniView.vue";
 import BgmRateView from "./BgmRateView.vue";
 import {fromNow} from "@/js/format.js";
 import {listAni} from "@/js/http.js";
-import AniCardView from "@/view/home/AniCardView.vue";
 import AniCoverView from "@/view/home/AniCoverView.vue";
 import {showWeek} from "@/js/global.js";
 
 const props = defineProps({
   title: String,
-  filter: Function,
-  viewMode: {
-    type: String,
-    default: 'card'
-  }
+  filter: Function
 })
 const emit = defineEmits(['loaded'])
 
@@ -78,12 +71,6 @@ const flatFilterList = ref([])
 const releaseDateList = ref([])
 
 const loading = ref(true)
-const viewComponent = computed(() => props.viewMode === 'cover' ? AniCoverView : AniCardView)
-const gridClass = computed(() => [
-  'grid-container',
-  props.viewMode === 'cover' ? 'cover-grid-container' : 'card-grid-container'
-])
-
 const changeFilterList = (text = '') => {
   let tempList = weekList.value;
   tempList = JSON.parse(JSON.stringify(tempList))
@@ -185,20 +172,12 @@ defineExpose({
   height: 8px;
 }
 
-.card-grid-container {
-  grid-template-columns: repeat(auto-fill, minmax(380px, 1fr));
-}
-
 .cover-grid-container {
   grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
   grid-gap: 24px;
 }
 
 @media (max-width: 800px) {
-  .card-grid-container {
-    grid-template-columns: 1fr;
-  }
-
   .cover-grid-container {
     grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
     grid-gap: 12px;
