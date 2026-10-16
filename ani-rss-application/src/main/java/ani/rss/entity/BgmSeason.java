@@ -52,7 +52,7 @@ public class BgmSeason implements Serializable {
         private Boolean exists;
         @Schema(description = "首播日期")
         private String premiereDate;
-        @Schema(description = "播出时间戳（秒）")
+        @Schema(description = "下一集预定放送时间戳（Unix 秒），未知时为空")
         private Long airingAt;
         @Schema(description = "总集数")
         private Integer episodes;

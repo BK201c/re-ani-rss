@@ -279,7 +279,7 @@
                               <div class="list-card-bottom-row">
                                 <div class="card-bottom-air-time">
                                   <div v-if="formatAirTime(anime)" class="card-air-time-row">
-                                    <div class="card-air-time-badge">
+                                    <div class="card-air-time-badge" :title="formatAirTime(anime).tooltip">
                                       <el-icon class="air-time-icon"><Timer /></el-icon>
                                       <span class="air-time-text">{{ formatAirTime(anime).display }}</span>
                                     </div>
@@ -346,7 +346,7 @@
                               </div>
                               <div class="list-row-meta-row">
                                 <div v-if="formatAirTime(anime)" class="card-air-time-row mini-air-time">
-                                  <div class="card-air-time-badge">
+                                  <div class="card-air-time-badge" :title="formatAirTime(anime).tooltip">
                                     <el-icon class="air-time-icon"><Timer /></el-icon>
                                     <span class="air-time-text">{{ formatAirTime(anime).display }}</span>
                                   </div>
@@ -676,7 +676,7 @@
                   >
                     <span class="anime-header-time-pill">
                       <el-icon><Timer /></el-icon>
-                      播出: {{ formatAirTime(selectedAnime).display }} {{ formatAirTime(selectedAnime).hasTime ? '(北京)' : '' }}
+                      {{ formatAirTime(selectedAnime).display }}
                     </span>
                   </el-tooltip>
                 </span>
@@ -906,7 +906,7 @@
 <script setup>
 import {computed, onActivated, onMounted, onUnmounted, ref, watch} from "vue";
 import {useRouter} from "vue-router";
-import {useLocalStorage} from "@vueuse/core";
+import {useLocalStorage, useTimestamp} from "@vueuse/core";
 import {ElMessage} from "element-plus";
 import {
   ArrowLeft,
@@ -944,6 +944,7 @@ import PageHeaderView from "@/view/custom/PageHeaderView.vue";
 import {aniData} from "@/js/ani.js";
 import {proxyImage} from "@/js/global.js";
 import {fromNow} from "@/js/format.js";
+import {formatNextAirTime} from "@/js/airTime.js";
 import * as http from "@/js/http.js";
 
 import mikanIcon from "@/icon/icon-Mikan.png";
@@ -1636,55 +1637,9 @@ const normalizeAnimeItem = (item) => {
   }
 }
 
-// 格式化番剧播出时间（月日时分，转换为北京时间并提供日本时间对照提示）
-const formatAirTime = (anime) => {
-  if (!anime) return null
-
-  // 1. 若有具体排期时间戳 airingAt（秒级 Unix 时间戳）
-  if (anime.airingAt) {
-    const ts = Number(anime.airingAt) * 1000
-    const d = new Date(ts)
-    if (!isNaN(d.getTime())) {
-      const getParts = (tz) => {
-        const parts = new Intl.DateTimeFormat('zh-CN', {
-          timeZone: tz,
-          month: '2-digit',
-          day: '2-digit',
-          hour: '2-digit',
-          minute: '2-digit',
-          hour12: false
-        }).formatToParts(d)
-        const get = (t) => parts.find(p => p.type === t)?.value || ''
-        return { m: get('month'), d: get('day'), h: get('hour'), min: get('minute') }
-      }
-
-      const bj = getParts('Asia/Shanghai')
-      const jp = getParts('Asia/Tokyo')
-
-      return {
-        hasTime: true,
-        display: `${bj.h}:${bj.min} ${bj.m}-${bj.d}`,
-        tooltip: `播出时间：<br/>• 北京时间: ${bj.m}月${bj.d}日 ${bj.h}:${bj.min}<br/>• 日本时间: ${jp.m}月${jp.d}日 ${jp.h}:${jp.min} (JST)`
-      }
-    }
-  }
-
-  // 2. 若仅有首播日期 premiereDate (YYYY-MM-DD)
-  if (anime.premiereDate) {
-    const parts = String(anime.premiereDate).split('-')
-    if (parts.length >= 3) {
-      const m = parts[1]
-      const d = parts[2]
-      return {
-        hasTime: false,
-        display: `${m}-${d} 首播`,
-        tooltip: `首播日期: ${parts[0]}年${m}月${d}日 (暂无具体时分)`
-      }
-    }
-  }
-
-  return null
-}
+// 每分钟检查排期是否已过，避免长时间打开页面仍显示过期的“下集”。
+const scheduleNow = useTimestamp({interval: 60_000})
+const formatAirTime = anime => formatNextAirTime(anime, scheduleNow.value)
 
 // 字幕组规范化
 const normalizeGroup = (group, source) => {
@@ -2888,6 +2843,7 @@ onActivated(() => {
 .air-time-text {
   font-weight: 500;
   font-variant-numeric: tabular-nums;
+  white-space: nowrap;
 }
 
 .air-time-tz-tag {
@@ -2944,6 +2900,7 @@ onActivated(() => {
 /* 卡片底部操作与状态条 */
 .list-card-bottom-row {
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
   justify-content: space-between;
   gap: 8px;
@@ -2980,7 +2937,7 @@ onActivated(() => {
   display: flex;
   align-items: center;
   min-width: 0;
-  overflow: hidden;
+  flex-shrink: 0;
 }
 
 .card-bottom-air-time .card-air-time-row {

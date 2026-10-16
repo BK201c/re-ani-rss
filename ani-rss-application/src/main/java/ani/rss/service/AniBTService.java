@@ -3,6 +3,7 @@ package ani.rss.service;
 import ani.rss.commons.FileUtils;
 import ani.rss.commons.GroupRegexUtils;
 import ani.rss.commons.GsonStatic;
+import ani.rss.cache.CacheUtils;
 import ani.rss.comparator.WeekComparator;
 import ani.rss.entity.Ani;
 import ani.rss.entity.AniBT;
@@ -19,10 +20,31 @@ import org.springframework.stereotype.Service;
 
 import java.util.Comparator;
 import java.util.List;
+import java.util.concurrent.TimeUnit;
 
 @Service
 public class AniBTService {
     private static final String HOST = "https://anibt.net";
+
+    /** 独立获取排期，不按 RSS 资源数量过滤尚未开播的作品。 */
+    public AniBT schedules(String season, String title, boolean refresh) {
+        String key = "anibt:schedules:" + season + ":" + title;
+        String cached = refresh ? null : CacheUtils.get(key);
+        if (cached != null) {
+            return GsonStatic.fromJson(cached, AniBT.class);
+        }
+        AniBT schedules = HttpReq.get(HOST + "/api/seasons/anime")
+                .timeout(5000)
+                .form("season", season)
+                .form("query", title)
+                .thenFunction(res -> {
+                    HttpReq.assertStatus(res);
+                    JsonObject response = GsonStatic.fromJson(res.body(), JsonObject.class);
+                    return GsonStatic.fromJson(response.getAsJsonObject("data"), AniBT.class);
+                });
+        CacheUtils.put(key, GsonStatic.toJson(schedules), TimeUnit.MINUTES.toMillis(10));
+        return schedules;
+    }
 
     public AniBT list(AniBTQueryDTO dto) {
         String title = dto.getTitle();

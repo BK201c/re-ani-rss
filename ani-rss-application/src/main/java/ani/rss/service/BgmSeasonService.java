@@ -140,6 +140,7 @@ public class BgmSeasonService {
                 try {
                     BgmSeason bgmSeason = GsonStatic.fromJson(cached, BgmSeason.class);
                     refreshExists(bgmSeason, bgmIdList);
+                    enrichSchedules(bgmSeason, dto);
                     return bgmSeason;
                 } catch (Exception e) {
                     log.warn("解析BGM季度缓存失败: {}", e.getMessage());
@@ -159,6 +160,7 @@ public class BgmSeasonService {
                 bgmSeason = loadHistoricalSeason(requestedSeason, currentSeason, availableSeasons, bgmIdList);
             }
 
+            enrichSchedules(bgmSeason, dto);
             if (bgmSeason != null && CollUtil.isNotEmpty(bgmSeason.getByWeekday())) {
                 CacheUtils.put(cacheKey, GsonStatic.toJson(bgmSeason), TimeUnit.HOURS.toMillis(24));
             }
@@ -557,6 +559,43 @@ public class BgmSeasonService {
             if (day.getAnimes() == null) continue;
             for (BgmSeason.Anime a : day.getAnimes()) {
                 a.setExists(bgmIdList.contains(a.getBgmId()));
+            }
+        }
+    }
+
+    /** Bangumi 日历仅提供首播日期，具体下一集时间按 BGM ID 补充。 */
+    private void enrichSchedules(BgmSeason season, BgmSeasonQueryDTO dto) {
+        if (aniBTService == null || season == null || CollUtil.isEmpty(season.getByWeekday())) return;
+        String title = StrUtil.blankToDefault(StrUtil.trim(dto.getTitle()), "");
+        String requestedSeason = title.isEmpty() ? StrUtil.blankToDefault(dto.getSeason(), getCurrentSeason()) : "";
+        String failureKey = "bgm:schedule-failure:" + requestedSeason + ":" + title;
+        if (!Boolean.TRUE.equals(dto.getRefresh()) && CacheUtils.containsKey(failureKey)) return;
+        try {
+            AniBT schedules = aniBTService.schedules(requestedSeason, title, Boolean.TRUE.equals(dto.getRefresh()));
+            mergeSchedules(season, schedules);
+            CacheUtils.remove(failureKey);
+        } catch (Exception e) {
+            // 排期源暂不可用时仍然返回 Bangumi 列表，并避免连续请求失败的上游。
+            CacheUtils.put(failureKey, true, TimeUnit.MINUTES.toMillis(1));
+            log.warn("补充番剧放送排期失败: {}", e.getMessage());
+        }
+    }
+
+    static void mergeSchedules(BgmSeason season, AniBT schedules) {
+        if (schedules == null || schedules.getByWeekday() == null) return;
+        Map<String, AniBT.Anime> byId = new HashMap<>();
+        for (AniBT.ByWeekday day : schedules.getByWeekday()) {
+            if (day.getAnimes() == null) continue;
+            for (AniBT.Anime anime : day.getAnimes()) {
+                if (StrUtil.isNotBlank(anime.getBgmId())) byId.put(anime.getBgmId(), anime);
+            }
+        }
+        for (BgmSeason.ByWeekday day : season.getByWeekday()) {
+            if (day.getAnimes() == null) continue;
+            for (BgmSeason.Anime anime : day.getAnimes()) {
+                AniBT.Anime schedule = byId.get(anime.getBgmId());
+                anime.setAiringAt(schedule == null ? null : schedule.getAiringAt());
+                anime.setScheduleStatus(schedule == null ? null : schedule.getScheduleStatus());
             }
         }
     }
